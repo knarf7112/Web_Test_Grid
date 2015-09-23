@@ -53,13 +53,17 @@ var TableManager = function (obj) {
     //current click page
     this.currentPage = 0;
     //Grid額外的寬度
-    this.GridExtraWidth = 50;                       
+    this.GridExtraWidth = 50;
+    //欄位的排列順序
+    this.columnSequence = [];
     //初始化
     this.init = function () {
         //1.建立展示資料元素
         this.createDisplayNode();
         //2.重新定義元素結構
         this.redefineGridNodesStruct();
+        //2-1.設定欄位順序陣列
+        this.set_columnSequenceArray();
         //3.設定主grid元素外框CSS style
         this.set_gridRootNodeStyle();
         //4.刷新Grid的所有元素style
@@ -116,9 +120,9 @@ var TableManager = function (obj) {
                         overflow: "hidden"
                     },
                     node: allChilds[elementIndex],
-                    nodeAttributes: isHeader ? {
-                        draggable: true
-                    } : {},
+                    //nodeAttributes: isHeader ? {
+                    //    draggable: true
+                    //} : {},
                     value: "",
                     type: isHeader ? "header" : "body"////column導向       //(Math.floor(elementIndex / this.column) == 0) ? "header" : "body"//row導向
                 };
@@ -135,6 +139,13 @@ var TableManager = function (obj) {
         //結果輸出
         this.refineNodeTable = container;
     };
+    this.set_columnSequenceArray = function () {
+        var main = this;
+        main.refineNodeTable.forEach(function(current,index){
+            main.columnSequence.push(index);
+        });
+
+    }
     //3.設定主grid元素外框CSS style
     this.set_gridRootNodeStyle = function () {
         var main = this;
@@ -453,8 +464,10 @@ var TableManager = function (obj) {
     this.display_data = function(pageIndex){
         var main = this;
         for(var columnIndex = 0; columnIndex < main.refineNodeTable.length;columnIndex++){
-            for(var rowIndex = 0; rowIndex < main.refineNodeTable[columnIndex].length;rowIndex++){
-                main.refineNodeTable[columnIndex][rowIndex].value = main.refinedData[pageIndex][columnIndex][rowIndex] || "";
+            for (var rowIndex = 0; rowIndex < main.refineNodeTable[columnIndex].length; rowIndex++) {
+                //console.log("順序", main.columnSequence[columnIndex], main.refinedData[pageIndex][main.columnSequence[columnIndex]][rowIndex]);
+                //欄位資料依據欄位陣列順序排列
+                main.refineNodeTable[columnIndex][rowIndex].value = main.refinedData[pageIndex][main.columnSequence[columnIndex]][rowIndex] || "";
                 main.refineNodeTable[columnIndex][rowIndex].node.textContent = main.refineNodeTable[columnIndex][rowIndex].value;
             }
         }
