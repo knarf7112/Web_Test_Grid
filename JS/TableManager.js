@@ -80,6 +80,8 @@ var TableManager = function (obj) {
         this.set_page_CSS();
         //10.切頁事件綁定
         this.bind_page_event();
+        //
+        this.event_bind_header();
         //4.物件載入資料
         //5.資料顯示
     };
@@ -120,9 +122,9 @@ var TableManager = function (obj) {
                         overflow: "hidden"
                     },
                     node: allChilds[elementIndex],
-                    //nodeAttributes: isHeader ? {
-                    //    draggable: true
-                    //} : {},
+                    nodeAttributes: isHeader ? {
+                        draggable: true
+                    } : {},
                     value: "",
                     type: isHeader ? "header" : "body"////column導向       //(Math.floor(elementIndex / this.column) == 0) ? "header" : "body"//row導向
                 };
@@ -139,13 +141,14 @@ var TableManager = function (obj) {
         //結果輸出
         this.refineNodeTable = container;
     };
+    //2-1.設定欄位順序陣列
     this.set_columnSequenceArray = function () {
         var main = this;
-        main.refineNodeTable.forEach(function(current,index){
+        main.refineNodeTable.forEach(function (current, index) {
             main.columnSequence.push(index);
         });
 
-    }
+    };
     //3.設定主grid元素外框CSS style
     this.set_gridRootNodeStyle = function () {
         var main = this;
@@ -155,7 +158,7 @@ var TableManager = function (obj) {
         main.gridElement.style.height = main.height + "px";
         main.gridElement.style.overflowY = "hidden";
         main.gridElement.style.overflowX = "visable";//
-    }
+    };
     //4.刷新Grid內所有display元素的CSS Style屬性或指定的CSS屬性
     this.refresh_allDisplayElementCssStyle = function (mainObj, columnIndex, propertyName) {
         var main = mainObj || this;
@@ -242,7 +245,7 @@ var TableManager = function (obj) {
         var main = this,
             moveFlag = false,
             flexiBarIndex = 0;//紀錄當前觸發flexi bar 的索引值,當作column index
-        //對所有的flexi bar 做事件綁定//currentElement為自訂義物件
+        //對所有的flexi bar 設定mousedown事件綁定//currentElement為自訂義物件
         main.flexiBarNodeList.forEach(function (currentElement, index, array) {
             //console.log("CurrentElement", currentElement);
             
@@ -257,8 +260,9 @@ var TableManager = function (obj) {
                 console.log("Down:pageX ", main.X_start);
             }, false);
         });
-        //
-        document.addEventListener("mousemove", function (e) {
+        //對Grid Root 元素作mousemove事件綁定 -- 用來計算移動間距與展示移動間距
+        main.gridElement.addEventListener("mousemove", function (e) {
+        //document.addEventListener("mousemove", function (e) {
             if (moveFlag) {
                 //console.log("Move", e);
                 main.X_end = e.pageX;//X axis end position
@@ -382,7 +386,8 @@ var TableManager = function (obj) {
             current.node.onclick = function (e) {
                 currentIndex = index + 1;
                 console.log("page click: " + currentIndex);
-                main.display_data(currentIndex);
+                main.currentPage = currentIndex;//set currentPage
+                main.display_data(currentIndex);//refresh all display value and node
             }
         });
     };
@@ -427,7 +432,8 @@ var TableManager = function (obj) {
         if (!!JsonData) {
             this.data.push(JsonData);
             this.refine_JsonData(JsonData);
-            this.display_data(1);
+            this.currentPage = 1
+            this.display_data(this.currentPage);
         }
     };
     //重新定義輸入的數據轉成自訂格式 => [頁][欄][列] => 數據
@@ -457,13 +463,13 @@ var TableManager = function (obj) {
                     columnIndex++;
                 }
             });
-            console.log('refined array', this.refinedData);//[page][column][row] => page:[column:[row:[]]]
+            //console.log('refined array', this.refinedData);//[page][column][row] => page:[column:[row:[]]]
         }
     };
     //數據寫入顯示元素
-    this.display_data = function(pageIndex){
+    this.display_data = function (pageIndex) {
         var main = this;
-        for(var columnIndex = 0; columnIndex < main.refineNodeTable.length;columnIndex++){
+        for (var columnIndex = 0; columnIndex < main.refineNodeTable.length; columnIndex++) {
             for (var rowIndex = 0; rowIndex < main.refineNodeTable[columnIndex].length; rowIndex++) {
                 //console.log("順序", main.columnSequence[columnIndex], main.refinedData[pageIndex][main.columnSequence[columnIndex]][rowIndex]);
                 //欄位資料依據欄位陣列順序排列
@@ -471,7 +477,75 @@ var TableManager = function (obj) {
                 main.refineNodeTable[columnIndex][rowIndex].node.textContent = main.refineNodeTable[columnIndex][rowIndex].value;
             }
         }
-    }
+    };
+    //
+    this.event_bind_header = function () {
+        var main = this,
+            selectColumnA = -1,
+            selectColumnB = -1;
+        main.refineNodeTable.forEach(function ( current, index, array) {
+            if ('header' === current[0].type) {
+                var i = 0;
+                //console.log("Header", current);
+                current[0].node.ondragstart = function (e) {
+                    e.stopPropagation();
+                    selectColumnA = index;
+                    this.style.opacity = "0.4";
+
+                    console.log('start', selectColumnA);
+                };
+                current[0].node.ondragend = function (e) {
+                    e.stopPropagation();
+                    this.style.opacity = "";
+                    console.log("dragend event", ++i);
+                };
+
+                //拉起來後就會一直不斷的觸發(即使滑鼠不動)--這是只要拉起來
+                //current[0].node.ondrag = function (e) {
+                //    console.log("drag event", e.currentTarget.textContent, ++i);
+                //};
+                //拉起來後就會一直不斷的觸發(即使滑鼠不動)--這是只要經過有的拖易物件滑過去,就會觸發
+                current[0].node.ondragover = function (e) {
+                    e.stopPropagation();
+                    // prevent default to allow drop,By default, data/elements cannot be dropped in other elements. To allow a drop, we must prevent the default handling of the element.
+                    e.preventDefault();//一定要終止此預設行為才能引發drop事件
+                    console.log("dragover event", e.currentTarget.textContent, ++i);
+                };
+                //用來改拖曳進入時的元素底色
+                current[0].node.ondragenter = function (e) {
+                    e.stopPropagation();
+                    console.log("dragendter event", e.currentTarget.textContent, ++i);
+                    this.style.backgroundColor = "yellow";
+                };
+                //用來還原拖曳離開時的元素底色(改回原來的)
+                current[0].node.ondragleave = function (e) {
+                    e.stopPropagation();
+                    console.log("dragendter event", e.currentTarget.textContent, ++i);
+                    this.style.backgroundColor = "#8b99e8";
+                };
+                //拖曳放下確定時
+                current[0].node.ondrop = function (e) {
+                    e.stopPropagation();
+                    this.style.backgroundColor = "#8b99e8";
+                    //console.log("drop event", e, ++i);
+                    selectColumnB = index;
+                    console.log('end', selectColumnB);
+                    main._swap_columnSequence(main.columnSequence, selectColumnA, selectColumnB);
+                    main.display_data(main.currentPage);
+                };
+                //若有drag事件就不會有mouseup事件
+                current[0].node.onmouseup = function (e) {
+                    console.log("mouseup  event", e.currentTarget.textContent,++i);
+                };
+            }
+        })
+    };
+    //
+    this._swap_columnSequence = function(ary,a,b){
+        var tmp = ary[a];
+        ary[a] = ary[b];
+        ary[b] = tmp;
+    };
 };
 //shared method
 TableManager.prototype.new = {
@@ -789,7 +863,7 @@ var Grid = function (obj) {
             this.displayNode.appendChild(this.gridNode);
             //domparser.parseFromString(tmp,'text/html');
             //select all cell and set attributes in main object
-            var divs = Array.prototype.slice.call( this.displayNode.querySelectorAll('.' + cellClassName));//node List convert Array
+            var divs = Array.prototype.slice.call(this.displayNode.querySelectorAll('.' + cellClassName));//node List convert Array
 
             divs.forEach(function (element, index) {
                 var columnIndex = Math.floor(index / (main.row + 1)),
@@ -909,8 +983,8 @@ var Grid = function (obj) {
         this.gridNode.addEventListener('mouseout', function (event) {
             var offsetLeft = (main.gridNode.getBoundingClientRect().left + document.body.scrollLeft);
             var offsetTop = (main.gridNode.getBoundingClientRect().top + document.body.scrollTop);
-            if(event.pageX <= offsetLeft || 
-                event.pageX >= (offsetLeft + parseInt(main.gridNode.style.width.split("px")[0],10)) ||
+            if (event.pageX <= offsetLeft ||
+                event.pageX >= (offsetLeft + parseInt(main.gridNode.style.width.split("px")[0], 10)) ||
                 event.pageY <= offsetTop ||
                 event.pageY >= (offsetTop + parseInt(main.gridNode.style.height.split("px")[0], 10))) {
                 main.control_package.re_size_mousedown = false;
@@ -1047,7 +1121,7 @@ var Grid = function (obj) {
     this._update = function () {
         for (var columnIndex = 0; columnIndex < this.column; columnIndex++) {
             for (var rowIndex = 0; rowIndex < this.row; rowIndex++) {
-                try{
+                try {
                     this.display_nodes[columnIndex][rowIndex + 1].data.value = this.data[this.package_num][this.row_st + rowIndex + 1][this.column_order[columnIndex]];
                 }
                 catch (ex) {
@@ -1088,7 +1162,7 @@ var Grid = function (obj) {
                         case "+10":
                         case "+1":
                             tmp = parseInt(main.page_package.page, 10) + parseInt(target_page, 10);
-                            if(tmp > main.page_package.limit_page){
+                            if (tmp > main.page_package.limit_page) {
                                 tmp = main.page_package.page;
                             }
                             if (tmp < 0) {
@@ -1156,7 +1230,7 @@ var Grid = function (obj) {
                 if (this.page_package.page === (st + (index - 3))) {
                     this.control_nodes[index].data.type = 'selected';
                 }
-                else{
+                else {
                     this.control_nodes[index].data.type = 'control';
                 }
             }
@@ -1212,7 +1286,7 @@ var Grid = function (obj) {
         for (var columnIndex = 0; columnIndex < this.display_nodes.length; columnIndex++) {
             // 欄位寬度除以字體大小減10
             tmp = this.display_nodes[columnIndex][0].data.width / this.font_size - 10;//
-            for(var rowIndex = 0; rowIndex < this.display_nodes[columnIndex].length;rowIndex++){
+            for (var rowIndex = 0; rowIndex < this.display_nodes[columnIndex].length; rowIndex++) {
                 this.display_nodes[columnIndex][rowIndex].data.width_count = tmp;
             }
         }
@@ -1251,6 +1325,6 @@ var Grid = function (obj) {
     };
 
     this.Initial();
-}
+};
 
 
