@@ -56,6 +56,7 @@ var TableManager = function (obj) {
     this.GridExtraWidth = 50;
     //欄位的排列順序
     this.columnSequence = [];
+    this.event;
     //初始化
     this.init = function () {
         //1.建立展示資料元素
@@ -75,16 +76,20 @@ var TableManager = function (obj) {
         //7.flexi bar bind mouse evnt and calculate X range(Closure)
         this.bind_flexiBar_event();
         //8.建立切頁元件
-        this.createPageControl();
+        //this.createPageControl();
+        this.createMultiplePageControl();
         //9.設定切頁CSS
-        this.set_page_CSS();
+        this.set_pageControl_CSS();
         //10.切頁事件綁定
-        this.bind_page_event();
+        this.bind_pageControl_event();
         //
         this.event_bind_header();
         //4.物件載入資料
         //5.資料顯示
     };
+    /*
+        資料表格元件
+    */
     //1.建立展示資料元素
     this.createDisplayNode = function () {
         //建立展示資料元素
@@ -119,6 +124,7 @@ var TableManager = function (obj) {
                         top: (rowIndex * main.rowHeight) + "px",//因以欄位為基準,所以剛好相反
                         left: (columnIndex * main.columnWidth) + "px",
                         border: "1px solid red",
+                        backgroundColor: isHeader ? "green" : "ActiveCaption",
                         overflow: "hidden"
                     },
                     node: allChilds[elementIndex],
@@ -185,6 +191,9 @@ var TableManager = function (obj) {
             }
         }
     };
+    /*
+        欄位縮放元件
+    */
     //5.create flexi bar and initial property (flexi bar:控制Grid上每個欄位的寬度與位置)
     this.createFlexiBar = function () {
         var main = this,
@@ -329,45 +338,77 @@ var TableManager = function (obj) {
         }
         mainObj.flexiBarNodeList[columnIndex].forward_width += x_range;//依據指定索引更新寬度變化量
     };
-    //8.建立切頁元件
-    this.createPageControl = function () {
+    /*
+        切頁元件
+    */
+    //8.建立切頁元件(只有7個control:首頁,遞增1或10頁,遞減1或10頁,末頁)
+    this.createMultiplePageControl = function () {
         var main = this,
-            tmpNodes;
+            tmpNodes,
+            textValue = ['min', '-10', '-1', 'Status', '+1', '+10', 'max'];
         //建立控制元件
-        main.pageControlRootNode = main.new.create('div', 9, 'page_control');
+        main.pageControlRootNode = main.new.create('div', 7, 'multiple_page_control');
         //Control DOM Collection cast to Array 
         tmpNodes = Array.prototype.slice.call(main.pageControlRootNode.children);//
         //console.log('Control Node', tmpNodes);
+        /*********************************************************/
         //initial control property
         tmpNodes.forEach(function (current, index, array) {
-             
-            var data = {
+            //依據textValue陣列資料値選擇並取得切頁資料物件
+            var data = main._get_pageControl_Object(current, index, textValue[index]);
+            main.pageControlNodeList.push(data);
+        });
+        console.log('page Control', main.pageControlNodeList);
+        main.mainElement.appendChild(main.pageControlRootNode);
+    };
+    //(私)取得切頁資料物件
+    this._get_pageControl_Object = function (node, index, category) {
+        var main = this,
+            data = {
                 index: index,
-                node: current,
+                node: node,
                 nodeCSS: {
                     "position": "absolute",
-                    "background-color": "pink",
-                    //"border": "2px solid black",
-                    "border-radius":"10px",
+                    "background-color": "aquamarine",
+                    "border": "1px solid black",
+                    //"border-radius": "10px",
                     "width": "50px",
                     "height": "50px",
-                    "left": (index * (main.width / tmpNodes.length) + 5) + "px",
-                    "top": main.height + 10 + "px",
+                    "top": main.height + "px",
                     "text-align": "center",
                     //padding:"20px",
                     "line-height": "50px",  //下移
+                    "":"",
                     "display": "inline"
                 },
-                value: index,
-                type:"page_control"
-            }
-            main.pageControlNodeList.push(data);
-        });
-        console.log('page Control',main.pageControlNodeList);
-        main.mainElement.appendChild(main.pageControlRootNode);
+                value: category,
+                category: category,
+                type: "page_control"
+            };
+        switch (category) {
+            case "Status":
+                data.nodeCSS["width"] = "100px";
+                data.nodeCSS["left"] = (+main.pageControlNodeList[index - 1].nodeCSS['width'].split('px')[0] + +main.pageControlNodeList[index - 1].nodeCSS['left'].split('px')[0]) + "px";
+                break;
+            case "-10":
+            case "-1":
+            case "+1":
+            case "+10":
+            case "max":
+                data.nodeCSS["width"] = "50px";
+                data.nodeCSS["left"] = (+main.pageControlNodeList[index - 1].nodeCSS['width'].split('px')[0] + +main.pageControlNodeList[index - 1].nodeCSS['left'].split('px')[0]) + "px";
+                break;
+            case "min":
+                data.nodeCSS["width"] = "50px";
+                data.nodeCSS["left"] = "0px";
+                break;
+            default:
+                throw new Error("Page Control Category not defined");
+        }
+        return data;
     };
-    //9.設定切頁元件CSS
-    this.set_page_CSS = function () {
+    //9.刷新切頁元件CSS與値
+    this.set_pageControl_CSS = function () {
         var main = this;
         for (var index = 0; index < main.pageControlNodeList.length; index++) {
             var cssText = "";
@@ -379,24 +420,75 @@ var TableManager = function (obj) {
         }
     };
     //10.綁定切頁事件
-    this.bind_page_event = function () {
-        var main = this,
-            currentIndex = -1;
-        main.pageControlNodeList.forEach(function (current,index,array) {
-            current.node.onclick = function (e) {
-                currentIndex = index + 1;
-                console.log("page click: " + currentIndex);
-                main.currentPage = currentIndex;//set currentPage
-                main.display_data(currentIndex);//refresh all display value and node
+    this.bind_pageControl_event = function () {
+        var main = this;
+            
+        main.pageControlNodeList.forEach(function (current, index, array) {
+            switch (current.category) {
+                case "min":
+                    current.node.onclick = function (e) {
+                        e.stopPropagation();
+                        main.currentPage = 1;
+                        main.display_data(main.currentPage);
+                        main.pageControlNodeList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
+                        console.log('切頁:min');
+                    };
+                    break;
+                case "-10":
+                    current.node.onclick = function (e) {
+                        e.stopPropagation();
+                        main.currentPage = ((main.currentPage - 10) >= 1) ? (main.currentPage - 10) : 1;
+                        main.display_data(main.currentPage);
+                        main.pageControlNodeList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
+                        console.log('切頁: -10');
+                    };
+                    break;
+                case "-1":
+                    current.node.onclick = function (e) {
+                        e.stopPropagation();
+                        main.currentPage = ((main.currentPage - 1) >= 1) ? (main.currentPage - 1) : 1;
+                        main.display_data(main.currentPage);
+                        main.pageControlNodeList[3].node.textContent = main.currentPage + "/" + main.refinedData.length;
+                        console.log('切頁: -1');
+                    };
+                    break;
+                case "+1":
+                    current.node.onclick = function (e) {
+                        e.stopPropagation();
+                        main.currentPage = ((main.currentPage + 1) <= (main.refinedData.length - 1)) ? (main.currentPage + 1) : (main.refinedData.length - 1);
+                        main.display_data(main.currentPage);
+                        main.pageControlNodeList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
+                        console.log('切頁: +1');
+                    };
+                    break;
+                case "+10":
+                    current.node.onclick = function (e) {
+                        e.stopPropagation();
+                        main.currentPage = ((main.currentPage + 10) <= (main.refinedData.length - 1)) ? (main.currentPage + 10) : (main.refinedData.length - 1);
+                        main.display_data(main.currentPage);
+                        main.pageControlNodeList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
+                        console.log('切頁: +10');
+                    };
+                    break;
+                case "max":
+                    current.node.onclick = function (e) {
+                        e.stopPropagation();
+                        main.currentPage = (main.refinedData.length - 1);
+                        main.display_data(main.currentPage);
+                        main.pageControlNodeList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
+                        console.log('切頁:min');
+                    };
+                    break;
             }
+
         });
     };
-    //
-    this.createMultiplePageControl = function () {
+    //[old]8.建立切頁元件(1~9個)
+    this.createPageControl = function () {
         var main = this,
             tmpNodes;
         //建立控制元件
-        main.pageControlRootNode = main.new.create('div', 4, 'multiple_page_control');
+        main.pageControlRootNode = main.new.create('div', 9, 'page_control');
         //Control DOM Collection cast to Array 
         tmpNodes = Array.prototype.slice.call(main.pageControlRootNode.children);//
         //console.log('Control Node', tmpNodes);
@@ -408,12 +500,13 @@ var TableManager = function (obj) {
                 node: current,
                 nodeCSS: {
                     "position": "absolute",
-                    "background-color": "red",
-                    "border": "2px solid black",
+                    "background-color": "pink",
+                    //"border": "2px solid black",
+                    "border-radius": "10px",
                     "width": "50px",
                     "height": "50px",
                     "left": (index * (main.width / tmpNodes.length) + 5) + "px",
-                    "top": main.height + "px",
+                    "top": main.height + 10 + "px",
                     "text-align": "center",
                     //padding:"20px",
                     "line-height": "50px",  //下移
@@ -427,6 +520,19 @@ var TableManager = function (obj) {
         console.log('page Control', main.pageControlNodeList);
         main.mainElement.appendChild(main.pageControlRootNode);
     };
+    //[old]10.綁定切頁事件
+    this.bind_page_event = function () {
+        var main = this,
+            currentIndex = -1;
+        main.pageControlNodeList.forEach(function (current,index,array) {
+            current.node.onclick = function (e) {
+                currentIndex = index + 1;
+                console.log("page click: " + currentIndex);
+                main.currentPage = currentIndex;//set currentPage
+                main.display_data(currentIndex);//refresh all display value and node
+            }
+        });
+    };
     //json data load and refine data for table format
     this.JsonDataLoad = function (JsonData) {
         if (!!JsonData) {
@@ -434,8 +540,12 @@ var TableManager = function (obj) {
             this.refine_JsonData(JsonData);
             this.currentPage = 1
             this.display_data(this.currentPage);
+            this.pageControlNodeList[3].node.textContent = this.currentPage + "/" + (this.refinedData.length - 1);
         }
     };
+    /*
+        數據元件
+    */
     //重新定義輸入的數據轉成自訂格式 => [頁][欄][列] => 數據
     this.refine_JsonData = function (jsonData) {
         if (jsonData instanceof Array) {
@@ -463,7 +573,7 @@ var TableManager = function (obj) {
                     columnIndex++;
                 }
             });
-            //console.log('refined array', this.refinedData);//[page][column][row] => page:[column:[row:[]]]
+            console.log('refined array', this.refinedData);//[page][column][row] => page:[column:[row:[]]]
         }
     };
     //數據寫入顯示元素
@@ -478,7 +588,7 @@ var TableManager = function (obj) {
             }
         }
     };
-    //
+    //欄位拖曳--作欄與欄資料交換
     this.event_bind_header = function () {
         var main = this,
             selectColumnA = -1,
@@ -521,12 +631,12 @@ var TableManager = function (obj) {
                 current[0].node.ondragleave = function (e) {
                     e.stopPropagation();
                     console.log("dragendter event", e.currentTarget.textContent, ++i);
-                    this.style.backgroundColor = "#8b99e8";
+                    this.style.backgroundColor = "green";
                 };
                 //拖曳放下確定時
                 current[0].node.ondrop = function (e) {
                     e.stopPropagation();
-                    this.style.backgroundColor = "#8b99e8";
+                    this.style.backgroundColor = "green";
                     //console.log("drop event", e, ++i);
                     selectColumnB = index;
                     console.log('end', selectColumnB);
@@ -534,13 +644,13 @@ var TableManager = function (obj) {
                     main.display_data(main.currentPage);
                 };
                 //若有drag事件就不會有mouseup事件
-                current[0].node.onmouseup = function (e) {
-                    console.log("mouseup  event", e.currentTarget.textContent,++i);
-                };
+                //current[0].node.onmouseup = function (e) {
+                //    console.log("mouseup  event", e.currentTarget.textContent,++i);
+                //};
             }
         })
     };
-    //
+    //(私)物件屬性値交換
     this._swap_columnSequence = function(ary,a,b){
         var tmp = ary[a];
         ary[a] = ary[b];
