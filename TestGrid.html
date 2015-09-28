@@ -15,7 +15,7 @@
         .data_Display>.data_Display:hover{
             background-color:red;
         }
-        .flexiBar{
+        .ResizeBar{
             cursor:col-resize;
         }
         .page_control{
@@ -35,6 +35,30 @@
             -moz-user-select: none;
             -ms-user-select: none;
             user-select:none;
+        }
+
+        .sort_down:before{
+            content:'\f107';
+        }
+        .sort_up:before{
+            content:'\f106';
+        }
+        .triangle_up{
+            width:0px;
+            height:0px;
+            /*transparent=透明*/
+            border-left:5px solid transparent;
+            border-right:5px solid transparent;
+            border-bottom:10px solid red;
+            cursor:pointer;
+        }
+        .triangle_down{
+            width:0px;
+            height:0px;
+            border-left:5px solid transparent;
+            border-right:5px solid transparent;
+            border-top:10px solid red;
+            cursor:pointer;
         }
          /*************************************************************/
          /*
@@ -140,17 +164,16 @@
     <div id="test"></div>
     <script>
         var div1 = document.getElementById('test');
-
-        try {
+        //try {
             //var testGrid = new Grid({ displayNode: div1, column_order: [4, 3, 2, 1, 0] });
             //testGrid.JsonLoader(test);
             var testGrid = new TableManager({ mainElement: div1 });
             testGrid.init();
             testGrid.JsonDataLoad(testObj);
-        }
-        catch (ex) {
-            console.error(ex);
-        }
+        //}
+        //catch (ex) {
+        //    console.error(ex);
+        //}
         
     </script>
 </body>

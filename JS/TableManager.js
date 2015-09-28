@@ -13,6 +13,7 @@
 //建立 table 框架 rows=>tr count, columns=>td count
 var TableManager = function (obj) {
     this.data = [];                                 //原始資料的集合
+    this.dataIndex = -1;
     this.refinedData = [];                          //重新定義的資料
     this.mainElement = obj.mainElement;             //指定注入的外部DOM父元素
     //紀錄寬度(含border,padding,不含scrollBar)
@@ -27,13 +28,13 @@ var TableManager = function (obj) {
     //資料展示元件
     this.refineNodeTable = [];                      
     //縮放元件主Node
-    this.flexiBarRootNode;                          
+    this.ResizeBarRootNode;                          
     //縮放元件
-    this.flexiBarNodeList = [];                     
+    this.ResizeBarNodeList = [];                     
     //縮放元件寬度
-    this.flexiBarCount = this.column;               
+    this.ResizeBarCount = this.column;               
     //紀錄每次滑鼠移動時的間距差
-    this.flexiBar_X_rangeList = [];                 
+    this.ResizeBar_X_rangeList = [];                 
     //mousedown start position
     this.X_start;                                   
     //mousemove end position
@@ -43,7 +44,7 @@ var TableManager = function (obj) {
     //Grid列的平均高度
     this.rowHeight;                                 
     //flexi bar元件的寬度値
-    this.flexiBarWidth = 10;
+    this.ResizeBarWidth = 10;
     //page control root node
     this.pageControlRootNode;
     //page control array
@@ -56,7 +57,12 @@ var TableManager = function (obj) {
     this.GridExtraWidth = 50;
     //欄位的排列順序
     this.columnSequence = [];
-    this.event;
+    //sort root node
+    this.columnSortedRootNode;
+    //sort
+    this.columnSortNodeList = [];
+    //排序過的數據
+    this.sortedObject ={};
     //初始化
     this.init = function () {
         //1.建立展示資料元素
@@ -70,11 +76,11 @@ var TableManager = function (obj) {
         //4.刷新Grid的所有元素style
         this.refresh_allDisplayElementCssStyle();
         //5.建立flexi bar
-        this.createFlexiBar();
+        this.createResizeBar();
         //6.refresh flexi bar css style 
-        this.refresh_flexiBarCssStyle();
+        this.refresh_ResizeBarCssStyle();
         //7.flexi bar bind mouse evnt and calculate X range(Closure)
-        this.bind_flexiBar_event();
+        this.bind_event_ResizeBar();
         //8.建立切頁元件
         //this.createPageControl();
         this.createMultiplePageControl();
@@ -82,10 +88,14 @@ var TableManager = function (obj) {
         this.set_pageControl_CSS();
         //10.切頁事件綁定
         this.bind_pageControl_event();
-        //
+        //11.欄位拖曳資料交換事件綁定--作欄與欄資料交換
         this.event_bind_header();
-        //4.物件載入資料
-        //5.資料顯示
+        //12.建立欄位排序元件
+        this.createSortNodeList();
+        //13.設定欄位排序元件CSS
+        this.set_columnSortNode_CSS();
+        //14.欄位排序元素click事件綁定
+        this.bind_event_columnSortNode();
     };
     /*
         資料表格元件
@@ -161,7 +171,7 @@ var TableManager = function (obj) {
         main.gridElement.style.position = "relative";
         //main.gridElement.style.border = "1px solid red";
         main.gridElement.style.width = main.width + main.GridExtraWidth + "px";//加上擴展的寬度(使最右邊的flexi bar可以向右拖曳不卡住)
-        main.gridElement.style.height = main.height + "px";
+        main.gridElement.style.height = main.height + 10 + "px";
         main.gridElement.style.overflowY = "hidden";
         main.gridElement.style.overflowX = "visable";//
     };
@@ -195,67 +205,67 @@ var TableManager = function (obj) {
         欄位縮放元件
     */
     //5.create flexi bar and initial property (flexi bar:控制Grid上每個欄位的寬度與位置)
-    this.createFlexiBar = function () {
+    this.createResizeBar = function () {
         var main = this,
             tmpNodes;
         //建立 flexi bar 元素
-        main.flexiBarRootNode = main.new.create('div', main.flexiBarCount, 'flexiBar');
+        main.ResizeBarRootNode = main.new.create('div', main.ResizeBarCount, 'ResizeBar');
         //casting to array
-        tmpNodes = Array.prototype.slice.call(main.flexiBarRootNode.children);//轉成陣列元素
+        tmpNodes = Array.prototype.slice.call(main.ResizeBarRootNode.children);//轉成陣列元素
         
         //set property into main object //iterator
         tmpNodes.forEach(function (currentElement, index, array) {
-            var default_left = ((main.columnWidth * (index + 1)));// - main.flexiBarWidth),//每個flexi bar的預設 X axis 位置
+            var default_left = ((main.columnWidth * (index + 1)));// - main.ResizeBarWidth),//每個flexi bar的預設 X axis 位置
                 //建立縮放元素(flexi bar)的資料結構
                 data = {
                     index: index,               //第幾條
                     default_left: default_left, //初始位置
                     X_deviation: 0,//滑鼠事件的移動變化值(原始值的遞增或遞減)
-                    forward_width: default_left - ((!!main.flexiBarNodeList[index - 1]) ? main.flexiBarNodeList[index - 1].default_left : 0),//與前一個元素的間距寬度
+                    forward_width: default_left - ((!!main.ResizeBarNodeList[index - 1]) ? main.ResizeBarNodeList[index - 1].default_left : 0),//與前一個元素的間距寬度
                     node: currentElement,       //DOM元素
                     nodeCSS: {                  //設定用CSS
                         position: "absolute",
                         //border: "1px solid yellow", //只是用來看元件位置
                         backgroundColor: "",
-                        width: main.flexiBarWidth + "px",
+                        width: main.ResizeBarWidth + "px",
                         height: main.height + "px",
                         left: default_left + "px",
                         top: "0px"
                     },
-                    type: "flexiBar"            //物件種類
+                    type: "ResizeBar"            //物件種類
                 };
             //console.log(currentElement);
-            main.flexiBarNodeList.push(data);//加入主物件
+            main.ResizeBarNodeList.push(data);//加入主物件
         });
-        //console.log('init flexi bar', main.flexiBarNodeList.map(function (current, index, array) { return current.forward_width; }))
+        //console.log('init flexi bar', main.ResizeBarNodeList.map(function (current, index, array) { return current.forward_width; }))
         //輸出到Grid元素上
-        main.gridElement.appendChild(main.flexiBarRootNode);
+        main.gridElement.appendChild(main.ResizeBarRootNode);
     };
     //6.refresh flexi bar css style 
-    this.refresh_flexiBarCssStyle = function (mainObj, columnIndex, propertyName) {
+    this.refresh_ResizeBarCssStyle = function (mainObj, columnIndex, propertyName) {
         var main = mainObj || this;
-        //flexiNodes = main.flexiBarRootNode.children;
+        //flexiNodes = main.ResizeBarRootNode.children;
         //設定所有縮放元素,若有指定起始index則取指定値當起始値
-        for (var index = columnIndex || 0; index < main.flexiBarNodeList.length; index++) {
+        for (var index = columnIndex || 0; index < main.ResizeBarNodeList.length; index++) {
             //若有指定設定名稱
             if (!!propertyName) {
-                main.flexiBarNodeList[index].node.style[propertyName] = main.flexiBarNodeList[index].nodeCSS[propertyName];
+                main.ResizeBarNodeList[index].node.style[propertyName] = main.ResizeBarNodeList[index].nodeCSS[propertyName];
             }
             else {
                 //設定所有Css Style
-                for (var property in main.flexiBarNodeList[index].nodeCSS) {
-                    main.flexiBarNodeList[index].node.style[property] = main.flexiBarNodeList[index].nodeCSS[property];
+                for (var property in main.ResizeBarNodeList[index].nodeCSS) {
+                    main.ResizeBarNodeList[index].node.style[property] = main.ResizeBarNodeList[index].nodeCSS[property];
                 }
             }
         }
     };
     //7.flexi bar bind mouse evnt and calculate X range(Closure)
-    this.bind_flexiBar_event = function () {
+    this.bind_event_ResizeBar = function () {
         var main = this,
             moveFlag = false,
-            flexiBarIndex = 0;//紀錄當前觸發flexi bar 的索引值,當作column index
+            ResizeBarIndex = 0;//紀錄當前觸發flexi bar 的索引值,當作column index
         //對所有的flexi bar 設定mousedown事件綁定//currentElement為自訂義物件
-        main.flexiBarNodeList.forEach(function (currentElement, index, array) {
+        main.ResizeBarNodeList.forEach(function (currentElement, index, array) {
             //console.log("CurrentElement", currentElement);
             
             currentElement.node.addEventListener("mousedown", function (e) {
@@ -263,7 +273,7 @@ var TableManager = function (obj) {
                 e.preventDefault();//停用DOM的drag功能,避免拖曳DOM
                 //ref:http://stackoverflow.com/questions/69430/is-there-a-way-to-make-text-unselectable-on-an-html-page
                 console.log("Down", e.target.className, index);
-                flexiBarIndex = index;
+                ResizeBarIndex = index;
                 moveFlag = true;
                 main.X_start = document.body.scrollLeft + main.gridElement.scrollLeft + e.pageX;
                 console.log("Down:pageX ", main.X_start);
@@ -273,48 +283,52 @@ var TableManager = function (obj) {
         main.gridElement.addEventListener("mousemove", function (e) {
         //document.addEventListener("mousemove", function (e) {
             if (moveFlag) {
-                //console.log("Move", e);
                 main.X_end = e.pageX;//X axis end position
                 //console.log("srcollLeft", document.body.scrollLeft, "main.X_end", main.X_end, "main.X_start", main.X_start);
                 //取得移動間距差(設定目前指定索引的間距)
-                main.flexiBar_X_rangeList[flexiBarIndex] = (document.body.scrollLeft + main.gridElement.scrollLeft + main.X_end - main.X_start);//取得間距
-                //console.log("Range", main.flexiBar_X_rangeList[flexiBarIndex], "Index", flexiBarIndex);
+                main.ResizeBar_X_rangeList[ResizeBarIndex] = (document.body.scrollLeft + main.gridElement.scrollLeft + main.X_end - main.X_start);//取得間距
+                //console.log("Range", main.ResizeBar_X_rangeList[ResizeBarIndex], "Index", ResizeBarIndex);
 
                 //更新flexi bar並累計最後的X軸偏移量
-                main._update_nodeCSS_CssStyle(main, flexiBarIndex, main.flexiBar_X_rangeList[flexiBarIndex], 'left');
+                main._update_nodeCSS_CssStyle(main, ResizeBarIndex, main.ResizeBar_X_rangeList[ResizeBarIndex], 'left');
             }
         });
         //mouse up event (設定最終的X axis偏移量)
         document.addEventListener("mouseup", function (e) {
             if (moveFlag) {
                 moveFlag = false;//關閉mousemove
-                //設定最終的X axis偏移量(flexiBarNodeList陣列內所有的X_deviation)
-                main._update_flexiBar_last_Xdeviation(main, flexiBarIndex, main.flexiBar_X_rangeList[flexiBarIndex]);
+                //設定最終的X axis偏移量(ResizeBarNodeList陣列內所有的X_deviation)
+                main._update_ResizeBar_last_Xdeviation(main, ResizeBarIndex, main.ResizeBar_X_rangeList[ResizeBarIndex]);
                 //只看X偏移量,所以其它屬性濾掉了
-                console.log("Up:X軸變化量", main.flexiBarNodeList.map(function (current, index, array) { return current.X_deviation; }));
+                console.log("Up:X軸變化量", main.ResizeBarNodeList.map(function (current, index, array) { return current.X_deviation; }));
                 //只看寬度變化量
-                console.log("Up:寬度變化量", main.flexiBarNodeList.map(function (current, index, array) { return current.forward_width; }));
+                console.log("Up:寬度變化量", main.ResizeBarNodeList.map(function (current, index, array) { return current.forward_width; }));
             }
         });
     };
     //7-1.更新指定與其相關的dispaly物件和flexi bar物件的width值與left值(update specified column width and others left, update specified flexi bar width and others left )
     this._update_nodeCSS_CssStyle = function ( mainObj, columnIndex, x_range, propertyName) {
-        for (var index = columnIndex ; index < mainObj.flexiBarNodeList.length; index++) {
+        for (var index = columnIndex ; index < mainObj.ResizeBarNodeList.length; index++) {
             /**********************************************************/
+            //(指定的拖曳軸)預設left + 上次變化量 + 本次變化量 => (指定拖曳軸)本次所需移動的left位置
+            var resizeBar_Left = (mainObj.ResizeBarNodeList[index].default_left + mainObj.ResizeBarNodeList[index].X_deviation + x_range );
             /*******更新flexi bar條*******/
             //更新flexi bar的nodeCSS內指定的屬性值
-            mainObj.flexiBarNodeList[index].nodeCSS[propertyName] = (mainObj.flexiBarNodeList[index].default_left + x_range + mainObj.flexiBarNodeList[index].X_deviation) + "px";
+            mainObj.ResizeBarNodeList[index].nodeCSS[propertyName] = resizeBar_Left + "px";
             //更新flexi bar元素的指定CSS style
-            mainObj.flexiBarNodeList[index].node.style[propertyName] = mainObj.flexiBarNodeList[index].nodeCSS[propertyName];
+            mainObj.ResizeBarNodeList[index].node.style[propertyName] = mainObj.ResizeBarNodeList[index].nodeCSS[propertyName];
+            
             //debugger;
             /**********************************************************/
-            /*******更新Grid元素*******/
+            /*
+                更新Grid元件
+            */
             //若為拖曳元素的索引値
             if (index === columnIndex){ 
                 //變更目前寬度
                 mainObj.refineNodeTable[index].forEach(function (currentElement, innerIndex, array) {
                     //更新display元素的nodeCSS內指定的屬性值
-                    currentElement.nodeCSS['width'] = (mainObj.flexiBarNodeList[index].forward_width + x_range) + "px";//前一次的寬度値 + 變化量
+                    currentElement.nodeCSS['width'] = (mainObj.ResizeBarNodeList[index].forward_width + x_range) + "px";//前一次的寬度値 + 變化量
                     //更新display元素的指定CSS style
                     currentElement.node.style['width'] = currentElement.nodeCSS['width'];
                 });
@@ -322,21 +336,26 @@ var TableManager = function (obj) {
             else {
                 //為拖曳元素後面所有的元素(left位置重新定位)
                 mainObj.refineNodeTable[index].forEach(function (currentElement, innerIndex, array) {
-                    //
-                    currentElement.nodeCSS[propertyName] = (mainObj.flexiBarNodeList[index - 1].default_left + mainObj.flexiBarNodeList[index-1].X_deviation + x_range) + 'px';//
+                    //前一個元素的預設值位置 + 之前累積的變化量 + 這次的變化量
+                    currentElement.nodeCSS[propertyName] = (mainObj.ResizeBarNodeList[index - 1].default_left + mainObj.ResizeBarNodeList[index-1].X_deviation + x_range) + 'px';//
                     currentElement.node.style[propertyName] = currentElement.nodeCSS[propertyName];
                 });
             }
             /**********************************************************/
+            /*
+                更新排序元件位置
+            */
+            mainObj.columnSortNodeList[index].nodeCSS[propertyName] = resizeBar_Left - 15 + "px";
+            mainObj.columnSortNodeList[index].node.style[propertyName] = mainObj.columnSortNodeList[index].nodeCSS[propertyName];
         }
         //console.log('Move refinedNodeList', mainObj.refineNodeTable);
     };
-    //7-2.依據指定索引更新flexi bar指定的間距値並累加指定索引後面的X軸變化量(依據指定的索引變更並累計flexiBarNodeList陣列內所有的X_deviation)
-    this._update_flexiBar_last_Xdeviation = function (mainObj, columnIndex, x_range) {
-        for (var index = columnIndex ; index < mainObj.flexiBarNodeList.length; index++) {
-            mainObj.flexiBarNodeList[index].X_deviation += x_range;//累加X axis 變化量
+    //7-2.依據指定索引更新flexi bar指定的間距値並累加指定索引後面的X軸變化量(依據指定的索引變更並累計ResizeBarNodeList陣列內所有的X_deviation)
+    this._update_ResizeBar_last_Xdeviation = function (mainObj, columnIndex, x_range) {
+        for (var index = columnIndex ; index < mainObj.ResizeBarNodeList.length; index++) {
+            mainObj.ResizeBarNodeList[index].X_deviation += x_range;//累加X axis 變化量
         }
-        mainObj.flexiBarNodeList[columnIndex].forward_width += x_range;//依據指定索引更新寬度變化量
+        mainObj.ResizeBarNodeList[columnIndex].forward_width += x_range;//依據指定索引更新寬度變化量
     };
     /*
         切頁元件
@@ -374,7 +393,7 @@ var TableManager = function (obj) {
                     //"border-radius": "10px",
                     "width": "50px",
                     "height": "50px",
-                    "top": main.height + "px",
+                    "top": (main.height + 12) + "px",
                     "text-align": "center",
                     //padding:"20px",
                     "line-height": "50px",  //下移
@@ -448,7 +467,7 @@ var TableManager = function (obj) {
                         e.stopPropagation();
                         main.currentPage = ((main.currentPage - 1) >= 1) ? (main.currentPage - 1) : 1;
                         main.display_data(main.currentPage);
-                        main.pageControlNodeList[3].node.textContent = main.currentPage + "/" + main.refinedData.length;
+                        main.pageControlNodeList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
                         console.log('切頁: -1');
                     };
                     break;
@@ -476,7 +495,7 @@ var TableManager = function (obj) {
                         main.currentPage = (main.refinedData.length - 1);
                         main.display_data(main.currentPage);
                         main.pageControlNodeList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
-                        console.log('切頁:min');
+                        console.log('切頁:max');
                     };
                     break;
             }
@@ -533,13 +552,18 @@ var TableManager = function (obj) {
             }
         });
     };
+    /*
+        數據注入公用方法
+    */
     //json data load and refine data for table format
     this.JsonDataLoad = function (JsonData) {
         if (!!JsonData) {
             this.data.push(JsonData);
+            this.dataIndex += 1;//目前所使用的厡始資料索引
             this.refine_JsonData(JsonData);
             this.currentPage = 1
             this.display_data(this.currentPage);
+            this._refresh_columnSortName();
             this.pageControlNodeList[3].node.textContent = this.currentPage + "/" + (this.refinedData.length - 1);
         }
     };
@@ -554,7 +578,7 @@ var TableManager = function (obj) {
             var currentPage,
                 columnIndex,
                 currentRowIndex,
-                refinedData = this.refinedData;//給個指標,否則下面的func會指回Winodw
+                refinedData = this.refinedData = [];//給個指標,否則下面的func會指回Winodw
 
             jsonData.forEach(function (currentObj, index, array) {
                 currentPage = Math.floor(index / everyRowCount) + 1;//page start is 1 [page 0 is undefined]
@@ -588,7 +612,10 @@ var TableManager = function (obj) {
             }
         }
     };
-    //欄位拖曳--作欄與欄資料交換
+    /*
+        欄位數據交換
+    */
+    //11.欄位拖曳資料交換事件綁定--作欄與欄資料交換(Closure)
     this.event_bind_header = function () {
         var main = this,
             selectColumnA = -1,
@@ -599,7 +626,7 @@ var TableManager = function (obj) {
                 //console.log("Header", current);
                 current[0].node.ondragstart = function (e) {
                     e.stopPropagation();
-                    selectColumnA = index;
+                    selectColumnA = index;//紀錄起始拖曳的索引值
                     this.style.opacity = "0.4";
 
                     console.log('start', selectColumnA);
@@ -638,23 +665,241 @@ var TableManager = function (obj) {
                     e.stopPropagation();
                     this.style.backgroundColor = "green";
                     //console.log("drop event", e, ++i);
-                    selectColumnB = index;
-                    console.log('end', selectColumnB);
-                    main._swap_columnSequence(main.columnSequence, selectColumnA, selectColumnB);
+                    selectColumnB = index;//紀錄結束拖曳的索引值
+                    //console.log('end', selectColumnB);
+                    main._swap(main.columnSequence, selectColumnA, selectColumnB);//交換起始與結束的索引順序
+                    main._swap_columnSortNode_sortName(selectColumnA, selectColumnB);//交換排序的欄位數據
                     main.display_data(main.currentPage);
                 };
                 //若有drag事件就不會有mouseup事件
                 //current[0].node.onmouseup = function (e) {
                 //    console.log("mouseup  event", e.currentTarget.textContent,++i);
                 //};
+                //current[0].node.onmousedown = function (e) {
+                //    console.log('mouse down', e);
+                //};
             }
         })
     };
     //(私)物件屬性値交換
-    this._swap_columnSequence = function(ary,a,b){
+    this._swap = function(ary,a,b){
         var tmp = ary[a];
         ary[a] = ary[b];
         ary[b] = tmp;
+    };
+    /*
+        欄位排序元件
+    */
+    //12.建立欄位排序元件
+    this.createSortNodeList = function () {
+        var main = this,
+            tmpNodes;
+        //create column sort elements
+        main.columnSortedRootNode = main.new.create('div', main.column, 'triangle_down');
+
+        tmpNodes = Array.prototype.slice.call(main.columnSortedRootNode.children);//
+
+        //set property into main object //iterator
+        tmpNodes.forEach(function (currentElement, index, array) {
+            var default_left = ((main.columnWidth * (index + 1))) - 15,//每個sort node的預設 X axis 位置
+            //建立縮放元素(flexi bar)的資料結構
+            data = {
+                index: index,               //第幾條
+                node: currentElement,       //DOM元素
+                default_left:default_left,
+                nodeCSS: {                  //設定用CSS
+                    position: "absolute",
+                    //border: "1px solid yellow", //只是用來看元件位置
+                    //backgroundColor: "red",
+                    //width: "10px",
+                    //height: "10px",
+                    left: default_left + "px",
+                    top: "5px"
+                },
+                columnSortName: "",
+                dataType:"",
+                type: "column_sort"            //物件種類
+            };
+            main.columnSortNodeList.push(data);//加入columnSortNodeList陣列
+        });
+        //輸出到Grid元素上
+        main.gridElement.appendChild(main.columnSortedRootNode);
+    };
+    //(私)數據注入時,刷新columnSortName屬性值
+    this._refresh_columnSortName = function () {
+        var main = this,
+            dataType = ['number', 'date', 'string', 'string', 'string'];
+        main.columnSortNodeList.forEach(function (currentElement, index, array) {
+            currentElement.columnSortName = main.refineNodeTable[main.columnSequence[index]][0].value;//取得json物件的屬性名稱(當排序的依據條件)
+            currentElement.dataType = dataType[index];
+        });
+    }
+    //13.刷新所有排序欄位元素的CSS或指定的CSS屬性
+    this.set_columnSortNode_CSS = function (mainObj, columnIndex, propertyName) {
+        var main = this;
+        var main = mainObj || this;
+        
+        //設定所有縮放元素,若有指定起始index則取指定値當起始値
+        for (var index = columnIndex || 0; index < main.columnSortNodeList.length; index++) {
+            //若有指定設定名稱
+            if (!!propertyName) {
+                main.columnSortNodeList[index].node.style[propertyName] = main.columnSortNodeList[index].nodeCSS[propertyName];
+            }
+            else {
+                //設定所有Css Style
+                for (var property in main.columnSortNodeList[index].nodeCSS) {
+                    main.columnSortNodeList[index].node.style[property] = main.columnSortNodeList[index].nodeCSS[property];
+                }
+            }
+        }
+    }
+    //14.欄位排序元素click事件綁定
+    this.bind_event_columnSortNode = function () {
+        var main = this;
+        main.columnSortNodeList.forEach(function (current, index, array) {
+            var isToogle = false;//紀錄click的狀態
+            current.node.onclick = function (event) {
+                var sortName = main.columnSortNodeList[index].columnSortName,
+                    dataType = main.columnSortNodeList[index].dataType,
+                    data = main.data[main.dataIndex],
+                    newData;
+                /************************************************/
+                /*
+                    排序的CSS shape change
+                */
+                if (isToogle = !isToogle) {
+                    current.node.classList.remove("triangle_down");
+                    current.node.classList.add("triangle_up");
+                }
+                else {
+                    current.node.classList.remove("triangle_up");
+                    current.node.classList.add("triangle_down");
+                }
+                /************************************************/
+                /*
+                    依據條件重新排序數據
+                */
+                //若此欄位沒排序過
+                if (!main.sortedObject[sortName]) {
+                    //重新計算與排序
+                    newData = main.quickSort(data, sortName, dataType);
+                    //加入排序物件
+                    main.sortedObject[sortName] = newData;
+                }
+                //反轉陣列
+                main.sortedObject[sortName] = main.sortedObject[sortName].reverse();
+                //重新定義數據元件
+                main.refine_JsonData(main.sortedObject[sortName]);
+                //console.log('sorted', sortName);
+                main.currentPage = 1
+                main.display_data(main.currentPage);
+                main.pageControlNodeList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
+                //console.log('sorted', main.refinedData);
+            };
+        });
+    };
+    //(私)排序元件的屬性(欄位名稱與資料格式)交換
+    this._swap_columnSortNode_sortName = function (index1,index2) {
+        var main = this;
+        var tmpColumnSortName,
+            tmpDataType;
+        tmpColumnSortName = main.columnSortNodeList[index1].columnSortName;
+        tmpDataType = main.columnSortNodeList[index1].dataType;
+        main.columnSortNodeList[index1].columnSortName = main.columnSortNodeList[index2].columnSortName;
+        main.columnSortNodeList[index1].dataType = main.columnSortNodeList[index2].dataType;
+        main.columnSortNodeList[index2].columnSortName = tmpColumnSortName;
+        main.columnSortNodeList[index2].dataType = tmpDataType;
+    }
+    //快速排序法(被比較的陣列,比較的物件屬性,比較的數據類型)
+    this.quickSort = function quick_Sort (ary, conditionName, type) {
+        var len = ary.length;
+        if (len <= 1) {
+            return ary.slice(0);
+        }
+        var left = [],
+            right = [],
+            mid = [ary[0]];//指標為輸入陣列的第0個
+        for (var i = 1; i < len; i++) {
+            /*************************************************************************************/
+            var compared = false;
+            switch (type) {
+                //日期比較
+                case "date":
+                        //console.log(data1, data2, (new Date(data1).getTime()), (new Date(data2).getTime()));
+                        compared = ((new Date(ary[i][conditionName]).getTime()) < (new Date(mid[0][conditionName]).getTime()));
+                    
+                    break;
+                    /*
+                    //字串比較(不比較字串,資料太多會stack over flow)
+                case "string":
+                    console.log('開始比較字串');
+                    //字串1長度少於字串2
+                    if (ary[i][conditionName].length < mid[0][conditionName].length) {
+                        compared = true;
+                    }
+                        //字串1長度大於字串2
+                    else if (ary[i][conditionName].length > mid[0][conditionName].length) {
+                        compared = false;
+                    }
+                    else {
+                        //字串1長度等於字串2
+                        for (var i = 0; i < ary[i][conditionName].length; i++) {
+                            //只要有一個字元(字串1)大於字串2的
+                            if (ary[i][conditionName].charCodeAt(i) > mid[0][conditionName].charCodeAt(i)) {
+                                compared = false;
+                            }
+                        }
+                        compared = true;
+                    }
+                    break;
+                    */
+                    //數字比較
+                case "number":
+                        compared = parseInt(ary[i][conditionName], 10) < parseInt(mid[0][conditionName], 10);
+                    break;
+            }
+            /*************************************************************************************/
+            if (compared) {//main._select_Compare(ary[i][conditionName],mid[0][conditionName],type)){//(ary[i][conditionName] < mid[0][conditionName]) {
+                left.push(ary[i]);//左邊放比指標小的
+            }
+            else {
+                right.push(ary[i]);//右邊放比指標大的
+            }
+        }
+        //將左邊遞迴完的陣列串聯中間的再串聯右邊遞迴完的陣列
+        return quick_Sort(left, conditionName, type).concat(mid.concat(quick_Sort(right, conditionName, type)));
+    };
+    //(棄用)依據比較的類型選擇比較方式並回傳比較結果(true/false)
+    this._select_Compare = function (data1, data2, type) {
+        switch (type) {
+            //日期比較
+            case "date":
+                //console.log(data1, data2, (new Date(data1).getTime()), (new Date(data2).getTime()));
+                return ((new Date(data1).getTime()) < (new Date(data2).getTime()));
+            //字串比較
+            case "string":
+                //字串1長度少於字串2
+                if(data1.length < data2.length){
+                    return true;
+                }
+                    //字串1長度大於字串2
+                else if(data1.length > data2.length){
+                    return false;
+                }
+                else {
+                    //字串1長度等於字串2
+                    for (var i = 0; i < data1.length; i++) {
+                        //只要有一個字元(字串1)大於字串2的
+                        if (data1.charCodeAt(i) > data2.charCodeAt(i)) {
+                            return false;
+                        }
+                    }
+                    return true;
+                }
+            //數字比較
+            case "number":
+                return parseInt(data1) < parseInt(data2);
+        }
     };
 };
 //shared method
@@ -676,6 +921,47 @@ TableManager.prototype.new = {
         rootElement = docHtml.getElementsByTagName(tagName)[0];
         console.log('create new DOM',rootElement);
         return rootElement;
+    },
+    //
+    createSVG: function (subNode){
+        var svg = document.createElementNS(null, "http://www.w3.org/2000/svg", "svg");
+        svg.appendChild(subNode);
+        return svg;
+    },
+    //建立SVG的polygon元素並設定座標點位置(x1,y1,x2,y2,x3,y3,x4...)
+    createPolygonNode: function () {
+        var pointList = [];
+        this.node = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        this.build = function (arg) {
+            var res = [];
+            for (var i = 0, l = arg.length; i < l; i++) {
+                res.push(arg[i].join(','));
+            }
+            return res.join(' ');
+        };
+        //attribute get and set operator
+        this.attribute = function (key, val) {
+            if (val === undefined) return node.getAttribute(key);
+            this.node.setAttribute(key, val);
+        };
+        //get point array
+        this.getPoint = function (i) {
+            return pointList[i];
+        };
+        //set point araay and points attribute
+        this.setPoint = function (i, x, y) {
+            pointList[i] = [x, y];
+            this.attribute('points', build(pointList));
+        };
+        //set point by arguments
+        this.points = function () {
+            for (var i = 0, l = arguments.length; i < l; i += 2) {
+                pointList.push([arguments[i], arguments[i + 1]]);
+            }
+            this.attribute('points', build(pointList));
+        };
+        // initialize 'points':
+        this.points.apply(this, arguments);
     },
     //元素增加某個class
     addClass: function (element, className) {
