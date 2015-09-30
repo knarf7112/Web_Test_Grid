@@ -133,8 +133,9 @@ var TableManager = function (obj) {
                         height: (main.rowHeight) + "px",
                         top: (rowIndex * main.rowHeight) + "px",//因以欄位為基準,所以剛好相反
                         left: (columnIndex * main.columnWidth) + "px",
-                        border: "1px solid red",
-                        backgroundColor: isHeader ? "green" : "ActiveCaption",
+                        border: "2px solid white",
+                        textAlign:"center",
+                        backgroundColor: isHeader ? "rgb(120, 207, 207)" : "rgb(174, 233, 233)",
                         overflow: "hidden"
                     },
                     node: allChilds[elementIndex],
@@ -388,8 +389,8 @@ var TableManager = function (obj) {
                 node: node,
                 nodeCSS: {
                     "position": "absolute",
-                    "background-color": "aquamarine",
-                    "border": "1px solid black",
+                    "background-color": "#e8f3f3",
+                    "border": "1px solid white",
                     //"border-radius": "10px",
                     "width": "50px",
                     "height": "50px",
@@ -556,11 +557,13 @@ var TableManager = function (obj) {
         數據注入公用方法
     */
     //json data load and refine data for table format
-    this.JsonDataLoad = function (JsonData) {
+    this.JsonDataLoad = function (JsonData, refinedFunc) {
+        var data;
         if (!!JsonData) {
-            this.data.push(JsonData);
+            data = (!!refinedFunc) ? refinedFunc(JsonData) : JsonData;
+            this.data.push(data);
             this.dataIndex += 1;//目前所使用的厡始資料索引
-            this.refine_JsonData(JsonData);
+            this.refine_JsonData(data);
             this.currentPage = 1
             this.display_data(this.currentPage);
             this._refresh_columnSortName();
@@ -658,12 +661,12 @@ var TableManager = function (obj) {
                 current[0].node.ondragleave = function (e) {
                     e.stopPropagation();
                     console.log("dragendter event", e.currentTarget.textContent, ++i);
-                    this.style.backgroundColor = "green";
+                    this.style.backgroundColor = "rgb(120, 207, 207)";
                 };
                 //拖曳放下確定時
                 current[0].node.ondrop = function (e) {
                     e.stopPropagation();
-                    this.style.backgroundColor = "green";
+                    this.style.backgroundColor = "rgb(120, 207, 207)";
                     //console.log("drop event", e, ++i);
                     selectColumnB = index;//紀錄結束拖曳的索引值
                     //console.log('end', selectColumnB);
@@ -728,7 +731,8 @@ var TableManager = function (obj) {
     //(私)數據注入時,刷新columnSortName屬性值
     this._refresh_columnSortName = function () {
         var main = this,
-            dataType = ['number', 'date', 'string', 'string', 'string'];
+            dataType = ['number', 'number', 'number', 'number', 'number'];   //kai的json數據
+                       //['number', 'date', 'string', 'string', 'string'];  //借來的json數據
         main.columnSortNodeList.forEach(function (currentElement, index, array) {
             currentElement.columnSortName = main.refineNodeTable[main.columnSequence[index]][0].value;//取得json物件的屬性名稱(當排序的依據條件)
             currentElement.dataType = dataType[index];
@@ -824,11 +828,16 @@ var TableManager = function (obj) {
             var compared = false;
             switch (type) {
                 //日期比較
-                case "date":
+                case 'date'://((!isNaN(Date.parse(ary[i][conditionName]))) && (!isNaN(Date.parse(mid[0][conditionName])))):
+                    //Date
                         //console.log(data1, data2, (new Date(data1).getTime()), (new Date(data2).getTime()));
                         compared = ((new Date(ary[i][conditionName]).getTime()) < (new Date(mid[0][conditionName]).getTime()));
                     
                     break;
+                    //數字比較
+                case 'number'://((!isNaN(Number(ary[i][conditionName]))) && (!isNaN(Number(mid[0][conditionName])))):
+                        compared = parseInt(ary[i][conditionName], 10) < parseInt(mid[0][conditionName], 10);
+                        break;
                     /*
                     //字串比較(不比較字串,資料太多會stack over flow)
                 case "string":
@@ -853,10 +862,8 @@ var TableManager = function (obj) {
                     }
                     break;
                     */
-                    //數字比較
-                case "number":
-                        compared = parseInt(ary[i][conditionName], 10) < parseInt(mid[0][conditionName], 10);
-                    break;
+                default:
+                    compared = false;
             }
             /*************************************************************************************/
             if (compared) {//main._select_Compare(ary[i][conditionName],mid[0][conditionName],type)){//(ary[i][conditionName] < mid[0][conditionName]) {
@@ -875,7 +882,7 @@ var TableManager = function (obj) {
             //日期比較
             case "date":
                 //console.log(data1, data2, (new Date(data1).getTime()), (new Date(data2).getTime()));
-                return ((new Date(data1).getTime()) < (new Date(data2).getTime()));
+                return ((Date.parse(data1)) < (Date.parse(data2)));
             //字串比較
             case "string":
                 //字串1長度少於字串2
@@ -1723,4 +1730,35 @@ var Grid = function (obj) {
     this.Initial();
 };
 
+function refinedFunction(data) {
+    var result = [],
+        header;
+    if (Array.isArray(data)) {
+        try {
+            for (var outerIndex = 0; outerIndex < data.length; outerIndex++) {
+                if (outerIndex === 0) {
+                    //過濾非字串
+                    header = data[outerIndex].filter(function (element, index, array) {
+                        return (typeof (element) === 'string') && (element.length > 0);
+                    });
+                    console.log('header',header);
+                }
+                else {
+                    var obj = {};
+                    for(var innerIndex = 0; innerIndex < data[outerIndex].length; innerIndex++){
+                        obj[header[innerIndex]] = data[outerIndex][innerIndex].toString();
+                    }
+                    result.push(obj);
+                }
+            }
+        }
+        catch (e) {
+            throw new Error('重新定義數據異常:' + e.stack);
+        }
+    }
+    else {
+        throw new Error('輸入的資料非陣列,無法重新定義');
+    }
+    return result;
+};
 
