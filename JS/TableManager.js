@@ -46,9 +46,9 @@ var TableManager = function (obj) {
     //flexi bar元件的寬度値
     this.ResizeBarWidth = 10;
     //page control root node
-    this.pageControlRootNode;
+    this.pageControlRootNode = { incrementPageRoot: undefined, specifiedPageRoot: undefined };
     //page control array
-    this.pageControlNodeList = [];
+    this.pageControl = { incrementPageList: [], specifiedPageList: [] };
     //
     this.multiPageControlNodeList = [];
     //current click page
@@ -81,13 +81,19 @@ var TableManager = function (obj) {
         this.refresh_ResizeBarCssStyle();
         //7.flexi bar bind mouse evnt and calculate X range(Closure)
         this.bind_event_ResizeBar();
-        //8.建立切頁元件
-        //this.createPageControl();
-        this.createMultiplePageControl();
-        //9.設定切頁CSS
-        this.set_pageControl_CSS();
-        //10.切頁事件綁定
-        this.bind_pageControl_event();
+        //8.建立(遞增或遞減)切頁元件
+        this.createIncrementPageControl();
+        //9.設定(遞增或遞減)切頁元件CSS Style
+        this.set_incrementPageControl_CSS();
+        //10.(遞增或遞減)切頁事件綁定
+        this.bind_event_incrementPageControl();
+        //11.建立(指定頁)切頁元件(1~10個)
+        this.createSpecifiedPageControl();
+        //12.刷新(指定頁)切頁元件CSS與値
+        this.set_specifiedPageControl_CSS();
+        //13.綁定(指定頁)切頁事件
+        this.bind_event_specifiedPageControl();
+
         //11.欄位拖曳資料交換事件綁定--作欄與欄資料交換
         this.event_bind_header();
         //12.建立欄位排序元件
@@ -361,28 +367,28 @@ var TableManager = function (obj) {
     /*
         切頁元件
     */
-    //8.建立切頁元件(只有7個control:首頁,遞增1或10頁,遞減1或10頁,末頁)
-    this.createMultiplePageControl = function () {
+    //8.建立(遞增或遞減)切頁元件(只有7個control:首頁,遞增1或10頁,遞減1或10頁,末頁)
+    this.createIncrementPageControl = function () {
         var main = this,
             tmpNodes,
             textValue = ['min', '-10', '-1', 'Status', '+1', '+10', 'max'];
-        //建立控制元件
-        main.pageControlRootNode = main.new.create('div', 7, 'multiple_page_control');
+        //建立(遞增或遞減)切頁控制元件
+        main.pageControlRootNode.incrementPageRoot = main.new.create('div', 7, 'multiple_page_control');
         //Control DOM Collection cast to Array 
-        tmpNodes = Array.prototype.slice.call(main.pageControlRootNode.children);//
+        tmpNodes = Array.prototype.slice.call(main.pageControlRootNode.incrementPageRoot.children);//
         //console.log('Control Node', tmpNodes);
         /*********************************************************/
         //initial control property
         tmpNodes.forEach(function (current, index, array) {
             //依據textValue陣列資料値選擇並取得切頁資料物件
-            var data = main._get_pageControl_Object(current, index, textValue[index]);
-            main.pageControlNodeList.push(data);
+            var data = main._get_incrementPageControl_Object(current, index, textValue[index]);
+            main.pageControl.incrementPageList.push(data);
         });
-        console.log('page Control', main.pageControlNodeList);
-        main.mainElement.appendChild(main.pageControlRootNode);
+        console.log('page Control', main.pageControl.incrementPageList);
+        main.mainElement.appendChild(main.pageControlRootNode.incrementPageRoot);
     };
-    //(私)取得切頁資料物件
-    this._get_pageControl_Object = function (node, index, category) {
+    //(私)取得(遞增或遞減)切頁資料物件
+    this._get_incrementPageControl_Object = function (node, index, category) {
         var main = this,
             data = {
                 index: index,
@@ -397,8 +403,7 @@ var TableManager = function (obj) {
                     "top": (main.height + 12) + "px",
                     "text-align": "center",
                     //padding:"20px",
-                    "line-height": "50px",  //下移
-                    "":"",
+                    "line-height": "50px",  //textContent下移
                     "display": "inline"
                 },
                 value: category,
@@ -407,16 +412,17 @@ var TableManager = function (obj) {
             };
         switch (category) {
             case "Status":
-                data.nodeCSS["width"] = "100px";
-                data.nodeCSS["left"] = (+main.pageControlNodeList[index - 1].nodeCSS['width'].split('px')[0] + +main.pageControlNodeList[index - 1].nodeCSS['left'].split('px')[0]) + "px";
+                data.nodeCSS["width"] = (main.width * 10 / 16) + 'px';//"100px";
+                data.nodeCSS["left"] = (+main.pageControl.incrementPageList[index - 1].nodeCSS['width'].split('px')[0] + +main.pageControl.incrementPageList[index - 1].nodeCSS['left'].split('px')[0]) + "px";
+                data.nodeCSS["visibility"] = "hidden";//隱藏起來(暫時不用)
                 break;
             case "-10":
             case "-1":
             case "+1":
             case "+10":
             case "max":
-                data.nodeCSS["width"] = "50px";
-                data.nodeCSS["left"] = (+main.pageControlNodeList[index - 1].nodeCSS['width'].split('px')[0] + +main.pageControlNodeList[index - 1].nodeCSS['left'].split('px')[0]) + "px";
+                data.nodeCSS["width"] = (main.width / 16) + 'px' ;//分成16等份來切區塊//"50px";
+                data.nodeCSS["left"] = (+main.pageControl.incrementPageList[index - 1].nodeCSS['width'].split('px')[0] + +main.pageControl.incrementPageList[index - 1].nodeCSS['left'].split('px')[0]) + "px";
                 break;
             case "min":
                 data.nodeCSS["width"] = "50px";
@@ -427,30 +433,30 @@ var TableManager = function (obj) {
         }
         return data;
     };
-    //9.刷新切頁元件CSS與値
-    this.set_pageControl_CSS = function () {
+    //9.刷新(遞增或遞減)切頁元件CSS與値
+    this.set_incrementPageControl_CSS = function () {
         var main = this;
-        for (var index = 0; index < main.pageControlNodeList.length; index++) {
+        for (var index = 0; index < main.pageControl.incrementPageList.length; index++) {
             var cssText = "";
-            for (var propertyName in main.pageControlNodeList[index].nodeCSS) {
-                cssText += propertyName + ":" + main.pageControlNodeList[index].nodeCSS[propertyName] + "; ";
+            for (var propertyName in main.pageControl.incrementPageList[index].nodeCSS) {
+                cssText += propertyName + ":" + main.pageControl.incrementPageList[index].nodeCSS[propertyName] + "; ";
             }
-            main.pageControlNodeList[index].node.style.cssText = cssText;
-            main.pageControlNodeList[index].node.textContent = main.pageControlNodeList[index].value;
+            main.pageControl.incrementPageList[index].node.style.cssText = cssText;
+            main.pageControl.incrementPageList[index].node.textContent = main.pageControl.incrementPageList[index].value;
         }
     };
-    //10.綁定切頁事件
-    this.bind_pageControl_event = function () {
+    //10.綁定(遞增或遞減)切頁事件
+    this.bind_event_incrementPageControl = function () {
         var main = this;
             
-        main.pageControlNodeList.forEach(function (current, index, array) {
+        main.pageControl.incrementPageList.forEach(function (current, index, array) {
             switch (current.category) {
                 case "min":
                     current.node.onclick = function (e) {
                         e.stopPropagation();
                         main.currentPage = 1;
                         main.display_data(main.currentPage);
-                        main.pageControlNodeList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
+                        main.pageControl.incrementPageList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
                         console.log('切頁:min');
                     };
                     break;
@@ -459,7 +465,7 @@ var TableManager = function (obj) {
                         e.stopPropagation();
                         main.currentPage = ((main.currentPage - 10) >= 1) ? (main.currentPage - 10) : 1;
                         main.display_data(main.currentPage);
-                        main.pageControlNodeList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
+                        main.pageControl.incrementPageList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
                         console.log('切頁: -10');
                     };
                     break;
@@ -468,7 +474,7 @@ var TableManager = function (obj) {
                         e.stopPropagation();
                         main.currentPage = ((main.currentPage - 1) >= 1) ? (main.currentPage - 1) : 1;
                         main.display_data(main.currentPage);
-                        main.pageControlNodeList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
+                        main.pageControl.incrementPageList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
                         console.log('切頁: -1');
                     };
                     break;
@@ -477,7 +483,7 @@ var TableManager = function (obj) {
                         e.stopPropagation();
                         main.currentPage = ((main.currentPage + 1) <= (main.refinedData.length - 1)) ? (main.currentPage + 1) : (main.refinedData.length - 1);
                         main.display_data(main.currentPage);
-                        main.pageControlNodeList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
+                        main.pageControl.incrementPageList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
                         console.log('切頁: +1');
                     };
                     break;
@@ -486,7 +492,7 @@ var TableManager = function (obj) {
                         e.stopPropagation();
                         main.currentPage = ((main.currentPage + 10) <= (main.refinedData.length - 1)) ? (main.currentPage + 10) : (main.refinedData.length - 1);
                         main.display_data(main.currentPage);
-                        main.pageControlNodeList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
+                        main.pageControl.incrementPageList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
                         console.log('切頁: +10');
                     };
                     break;
@@ -495,7 +501,7 @@ var TableManager = function (obj) {
                         e.stopPropagation();
                         main.currentPage = (main.refinedData.length - 1);
                         main.display_data(main.currentPage);
-                        main.pageControlNodeList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
+                        main.pageControl.incrementPageList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
                         console.log('切頁:max');
                     };
                     break;
@@ -503,14 +509,14 @@ var TableManager = function (obj) {
 
         });
     };
-    //[old]8.建立切頁元件(1~9個)
-    this.createPageControl = function () {
+    //11.建立(指定頁)切頁元件(1~10個)
+    this.createSpecifiedPageControl = function () {
         var main = this,
             tmpNodes;
-        //建立控制元件
-        main.pageControlRootNode = main.new.create('div', 9, 'page_control');
+        //建立(指定頁)控制元件
+        main.pageControlRootNode.specifiedPageRoot = main.new.create('div', 10, 'page_control');
         //Control DOM Collection cast to Array 
-        tmpNodes = Array.prototype.slice.call(main.pageControlRootNode.children);//
+        tmpNodes = Array.prototype.slice.call(main.pageControlRootNode.specifiedPageRoot.children);//
         //console.log('Control Node', tmpNodes);
         //initial control property
         tmpNodes.forEach(function (current, index, array) {
@@ -520,34 +526,46 @@ var TableManager = function (obj) {
                 node: current,
                 nodeCSS: {
                     "position": "absolute",
-                    "background-color": "pink",
-                    //"border": "2px solid black",
-                    "border-radius": "10px",
-                    "width": "50px",
+                    "background-color": "#e8f3f3",
+                    "border": "px solid white",
+                    //border-radius": "10px",
+                    "width": (main.width / 16) + 'px',
                     "height": "50px",
-                    "left": (index * (main.width / tmpNodes.length) + 5) + "px",
-                    "top": main.height + 10 + "px",
+                    "left": +main.pageControl.incrementPageList[2].nodeCSS.left.split('px')[0] + (main.width/16 * (index + 1)) + "px",
+                    "top": main.height + 12 + "px",
                     "text-align": "center",
                     //padding:"20px",
                     "line-height": "50px",  //下移
                     "display": "inline"
                 },
-                value: index,
+                pageIndex: (index + 1),
                 type: "page_control"
             }
-            main.pageControlNodeList.push(data);
+            main.pageControl.specifiedPageList.push(data);
         });
-        console.log('page Control', main.pageControlNodeList);
-        main.mainElement.appendChild(main.pageControlRootNode);
+        console.log('page Control[specifiedPageList]:', main.pageControl.specifiedPageList);
+        main.mainElement.appendChild(main.pageControlRootNode.specifiedPageRoot);
     };
-    //[old]10.綁定切頁事件
-    this.bind_page_event = function () {
+    //12.刷新(指定頁)切頁元件CSS與値
+    this.set_specifiedPageControl_CSS = function () {
+        var main = this;
+        for (var index = 0; index < main.pageControl.specifiedPageList.length; index++) {
+            var cssText = "";
+            for (var propertyName in main.pageControl.specifiedPageList[index].nodeCSS) {
+                cssText += propertyName + ":" + main.pageControl.specifiedPageList[index].nodeCSS[propertyName] + "; ";
+            }
+            main.pageControl.specifiedPageList[index].node.style.cssText = cssText;
+            main.pageControl.specifiedPageList[index].node.textContent = main.pageControl.specifiedPageList[index].pageIndex;
+        }
+    };
+    //13.綁定(指定頁)切頁事件
+    this.bind_event_specifiedPageControl = function () {
         var main = this,
             currentIndex = -1;
-        main.pageControlNodeList.forEach(function (current,index,array) {
+        main.pageControl.specifiedPageList.forEach(function (current,index,array) {
             current.node.onclick = function (e) {
                 currentIndex = index + 1;
-                console.log("page click: " + currentIndex);
+                console.log("page click: " + currentIndex, 'Control object PageIndex:',current.pageIndex);
                 main.currentPage = currentIndex;//set currentPage
                 main.display_data(currentIndex);//refresh all display value and node
             }
@@ -567,7 +585,7 @@ var TableManager = function (obj) {
             this.currentPage = 1
             this.display_data(this.currentPage);
             this._refresh_columnSortName();
-            this.pageControlNodeList[3].node.textContent = this.currentPage + "/" + (this.refinedData.length - 1);
+            this.pageControl.incrementPageList[3].node.textContent = this.currentPage + "/" + (this.refinedData.length - 1);
         }
     };
     /*
@@ -797,7 +815,7 @@ var TableManager = function (obj) {
                 //console.log('sorted', sortName);
                 main.currentPage = 1
                 main.display_data(main.currentPage);
-                main.pageControlNodeList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
+                main.pageControl.incrementPageList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
                 //console.log('sorted', main.refinedData);
             };
         });
