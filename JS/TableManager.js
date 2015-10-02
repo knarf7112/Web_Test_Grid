@@ -49,8 +49,6 @@ var TableManager = function (obj) {
     this.pageControlRootNode = { incrementPageRoot: undefined, specifiedPageRoot: undefined };
     //page control array
     this.pageControl = { incrementPageList: [], specifiedPageList: [] };
-    //
-    this.multiPageControlNodeList = [];
     //current click page
     this.currentPage = 0;
     //Grid額外的寬度
@@ -404,7 +402,7 @@ var TableManager = function (obj) {
                     "text-align": "center",
                     //padding:"20px",
                     "line-height": "50px",  //textContent下移
-                    "display": "inline"
+                    "visibility": "visible"
                 },
                 value: category,
                 category: category,
@@ -454,54 +452,60 @@ var TableManager = function (obj) {
                 case "min":
                     current.node.onclick = function (e) {
                         e.stopPropagation();
-                        main.currentPage = 1;
-                        main.display_data(main.currentPage);
-                        main.pageControl.incrementPageList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
+                        //
+                        main.refresh_specifiedPageControl_pageIndex(1);
+                        //main.pageControl.incrementPageList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
                         console.log('切頁:min');
                     };
                     break;
                 case "-10":
                     current.node.onclick = function (e) {
                         e.stopPropagation();
-                        main.currentPage = ((main.currentPage - 10) >= 1) ? (main.currentPage - 10) : 1;
-                        main.display_data(main.currentPage);
-                        main.pageControl.incrementPageList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
+                        var currentPage = ((main.currentPage - 10) >= 1) ? (main.currentPage - 10) : 1;
+                        main.refresh_specifiedPageControl_pageIndex(currentPage);
+                        //main.display_data(main.currentPage);
+                        //main.pageControl.incrementPageList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
                         console.log('切頁: -10');
                     };
                     break;
                 case "-1":
                     current.node.onclick = function (e) {
                         e.stopPropagation();
-                        main.currentPage = ((main.currentPage - 1) >= 1) ? (main.currentPage - 1) : 1;
-                        main.display_data(main.currentPage);
-                        main.pageControl.incrementPageList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
+                        var currentPage = ((main.currentPage - 1) >= 1) ? (main.currentPage - 1) : 1;
+                        main.refresh_specifiedPageControl_pageIndex(currentPage);
+                        //main.display_data(main.currentPage);
+                        //main.pageControl.incrementPageList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
                         console.log('切頁: -1');
                     };
                     break;
                 case "+1":
                     current.node.onclick = function (e) {
                         e.stopPropagation();
-                        main.currentPage = ((main.currentPage + 1) <= (main.refinedData.length - 1)) ? (main.currentPage + 1) : (main.refinedData.length - 1);
-                        main.display_data(main.currentPage);
-                        main.pageControl.incrementPageList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
+                        var currentPage = ((main.currentPage + 1) <= (main.refinedData.length - 1)) ? (main.currentPage + 1) : (main.refinedData.length - 1);
+                        console.log('+1', currentPage);
+                        main.refresh_specifiedPageControl_pageIndex(currentPage);
+                        //main.display_data(main.currentPage);
+                        //main.pageControl.incrementPageList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
                         console.log('切頁: +1');
                     };
                     break;
                 case "+10":
                     current.node.onclick = function (e) {
                         e.stopPropagation();
-                        main.currentPage = ((main.currentPage + 10) <= (main.refinedData.length - 1)) ? (main.currentPage + 10) : (main.refinedData.length - 1);
-                        main.display_data(main.currentPage);
-                        main.pageControl.incrementPageList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
+                        var currentPage = ((main.currentPage + 10) <= (main.refinedData.length - 1)) ? (main.currentPage + 10) : (main.refinedData.length - 1);
+                        main.refresh_specifiedPageControl_pageIndex(currentPage);
+                        //main.display_data(main.currentPage);
+                        //main.pageControl.incrementPageList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
                         console.log('切頁: +10');
                     };
                     break;
                 case "max":
                     current.node.onclick = function (e) {
                         e.stopPropagation();
-                        main.currentPage = (main.refinedData.length - 1);
-                        main.display_data(main.currentPage);
-                        main.pageControl.incrementPageList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
+                        var currentPage = (main.refinedData.length - 1);
+                        main.refresh_specifiedPageControl_pageIndex(currentPage);
+                        //main.display_data(main.currentPage);
+                        //main.pageControl.incrementPageList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
                         console.log('切頁:max');
                     };
                     break;
@@ -509,7 +513,7 @@ var TableManager = function (obj) {
 
         });
     };
-    //11.建立(指定頁)切頁元件(1~10個)
+    //11.建立(指定頁)切頁元件(1~10頁)
     this.createSpecifiedPageControl = function () {
         var main = this,
             tmpNodes;
@@ -522,29 +526,65 @@ var TableManager = function (obj) {
         tmpNodes.forEach(function (current, index, array) {
 
             var data = {
+                //物件索引
                 index: index,
+                //DOM元素
                 node: current,
+                //DOM對應的style設定
                 nodeCSS: {
                     "position": "absolute",
                     "background-color": "#e8f3f3",
-                    "border": "px solid white",
+                    "border": "1px solid white",
                     //border-radius": "10px",
                     "width": (main.width / 16) + 'px',
                     "height": "50px",
-                    "left": +main.pageControl.incrementPageList[2].nodeCSS.left.split('px')[0] + (main.width/16 * (index + 1)) + "px",
+                    "left": +main.pageControl.incrementPageList[2].nodeCSS.left.split('px')[0] + (main.width / 16 * (index + 1)) + "px",
                     "top": main.height + 12 + "px",
                     "text-align": "center",
                     //padding:"20px",
                     "line-height": "50px",  //下移
-                    "display": "inline"
+                    "visibility": "visible"
                 },
-                pageIndex: (index + 1),
-                type: "page_control"
-            }
-            main.pageControl.specifiedPageList.push(data);
+                //選擇flag
+                selected: false,
+                //頁數
+                pageIndex: (index + 1),//初始的預設値: 1 ~ 10
+                //物件格式
+                type: "page_control",
+                //set selected flag func
+                set_select: function (flag) {
+                    this.selected = flag, this._change_backgroundColorStyle(this.selected);//依據flag變更css style
+                },
+                get_select: function () {
+                    return this.selected;
+                },
+                //設定指定頁物件的pageIndex屬性
+                set_pageIndex: function (pageIndex) {
+                    //檢查是否為數字
+                    var page = isNaN(Number(pageIndex)) ? undefined : pageIndex;
+                    this.pageIndex = page;
+                    this.node.textContent = this.pageIndex;
+                    //依據pageIndex屬性設定:若非數字則隱藏DOM元素
+                    this._change_visibility(this.pageIndex);
+                },
+                //取得指定頁物件的pageIndex屬性
+                get_pageIndex:function(){
+                    return this.pageIndex;
+                },
+                //(private)chagne self css style
+                _change_backgroundColorStyle: function (flag) {
+                    this.nodeCSS['backgroundColor'] = !!flag ? "#3399FF" : "rgb(232, 243, 243)";
+                    this.node.style['backgroundColor'] = this.nodeCSS['backgroundColor'];
+                },
+                //(private)change DOM visibility style when visible is true or hidden
+                _change_visibility: function (visible) {
+                    this.node.style['visibility'] = !!visible ? "visible" : "hidden";
+                }
+            };
+            main.pageControl.specifiedPageList.push(data);//物件注入指定頁屬性(陣列)
         });
-        console.log('page Control[specifiedPageList]:', main.pageControl.specifiedPageList);
-        main.mainElement.appendChild(main.pageControlRootNode.specifiedPageRoot);
+        //console.log('page Control[specifiedPageList]:', main.pageControl.specifiedPageList);
+        main.mainElement.appendChild(main.pageControlRootNode.specifiedPageRoot);//附加到主DOM上
     };
     //12.刷新(指定頁)切頁元件CSS與値
     this.set_specifiedPageControl_CSS = function () {
@@ -558,16 +598,54 @@ var TableManager = function (obj) {
             main.pageControl.specifiedPageList[index].node.textContent = main.pageControl.specifiedPageList[index].pageIndex;
         }
     };
+    //刷新指定頁的pageIndex屬性
+    this.refresh_specifiedPageControl_pageIndex = function (pageIndex) {
+        var main = this,
+            maxPage = (main.refinedData.length - 1),    //取得自定資料物件的最大頁數値
+            last_digit_ten = Math.floor((main.currentPage - 1) / 10),
+            digit_ten = Math.floor((pageIndex -1) / 10);     //取得頁的非個位數的値(ex: 第10頁 => 0,第11頁 => 1)
+        if (pageIndex < 0 || pageIndex > (main.refinedData.length - 1)) {
+            throw new Error("[_refresh_specifiedPageControl_pageIndex] Error: PageIndex:" + pageIndex + " out of range");
+        };
+        //前一次的頁範圍與當前頁範圍不同才刷新指定頁物件
+        if (last_digit_ten !== digit_ten) {
+            //刷新指定頁物件的所有pageIndex屬性與DOM內容
+            main.pageControl.specifiedPageList.forEach(function (current, index, array) {
+                var pageIndex = (digit_ten * 10) + index + 1;//當前要設定的頁索引値,若超過自定資料物件的最大頁數則設為空
+                if (pageIndex <= maxPage) {
+                    current.set_pageIndex(pageIndex);
+                }
+                else {
+                    current.set_pageIndex("");
+                }
+            });
+        }
+        //取消前一次指定頁的select屬性與背景色
+        main.pageControl.specifiedPageList[(main.currentPage - 1) % 10].set_select(false);
+        //設定當前頁
+        main.currentPage = pageIndex;
+        //設定當前指定頁的slect屬性與背景色
+        main.pageControl.specifiedPageList[(main.currentPage - 1) % 10].set_select(true);
+        //刷新顯示資料
+        main.display_data(main.currentPage);
+    };
     //13.綁定(指定頁)切頁事件
     this.bind_event_specifiedPageControl = function () {
         var main = this,
-            currentIndex = -1;
+            currentIndex = 0,
+            tmpCurrentPageIndex = 0;
         main.pageControl.specifiedPageList.forEach(function (current,index,array) {
             current.node.onclick = function (e) {
-                currentIndex = index + 1;
+                //取消上次指定頁物件的select屬性並還原背景色
+                main.pageControl.specifiedPageList[(main.currentPage - 1) % 10].set_select(false);
+                
+                //設定觸發click事件的物件索引
+                currentIndex = index;
+                tmpCurrentPageIndex = current.pageIndex;//取得物件內page屬性的值
                 console.log("page click: " + currentIndex, 'Control object PageIndex:',current.pageIndex);
-                main.currentPage = currentIndex;//set currentPage
-                main.display_data(currentIndex);//refresh all display value and node
+                main.currentPage = tmpCurrentPageIndex;//變更主物件的當前頁屬性値
+                main.display_data(main.currentPage);//依據頁値刷新顯示資料
+                main.pageControl.specifiedPageList[(main.currentPage - 1) % 10].set_select(true);//變更本次指定頁物件的select屬性並變更背景色
             }
         });
     };
@@ -578,13 +656,15 @@ var TableManager = function (obj) {
     this.JsonDataLoad = function (JsonData, refinedFunc) {
         var data;
         if (!!JsonData) {
-            data = (!!refinedFunc) ? refinedFunc(JsonData) : JsonData;
+            data = (!!refinedFunc) ? refinedFunc(JsonData) : JsonData;//if has refine function then call it or just origin JSON
             this.data.push(data);
             this.dataIndex += 1;//目前所使用的厡始資料索引
-            this.refine_JsonData(data);
-            this.currentPage = 1
-            this.display_data(this.currentPage);
-            this._refresh_columnSortName();
+            this.refine_JsonData(data);//將注入資料轉換成自訂格式物件(即refinedData[頁][欄][列])
+            this.currentPage = 1;//定義當前頁屬性為第1頁
+            this.display_data(this.currentPage);//使用自定格式物件刷新頁面
+            this.pageControl.specifiedPageList[this.currentPage - 1].set_select(true);//變更指定頁物件的select屬性並變更背景
+            this._refresh_columnSortName();//
+            //頁狀態物件的元素屬性(node => DOM)
             this.pageControl.incrementPageList[3].node.textContent = this.currentPage + "/" + (this.refinedData.length - 1);
         }
     };
@@ -618,7 +698,7 @@ var TableManager = function (obj) {
                     columnIndex++;
                 }
             });
-            console.log('refined array', this.refinedData);//[page][column][row] => page:[column:[row:[]]]
+            //console.log('refined array', this.refinedData);//[page][column][row] => page:[column:[row:[]]]
         }
     };
     //數據寫入顯示元素
@@ -716,7 +796,7 @@ var TableManager = function (obj) {
         var main = this,
             tmpNodes;
         //create column sort elements
-        main.columnSortedRootNode = main.new.create('div', main.column, 'triangle_down');
+        main.columnSortedRootNode = main.new.create('div', main.column, 'triangle_up');
 
         tmpNodes = Array.prototype.slice.call(main.columnSortedRootNode.children);//
 
@@ -781,21 +861,21 @@ var TableManager = function (obj) {
         main.columnSortNodeList.forEach(function (current, index, array) {
             var isToogle = false;//紀錄click的狀態
             current.node.onclick = function (event) {
-                var sortName = main.columnSortNodeList[index].columnSortName,
-                    dataType = main.columnSortNodeList[index].dataType,
-                    data = main.data[main.dataIndex],
-                    newData;
+                var sortName = main.columnSortNodeList[index].columnSortName,   //排序的指定欄位名稱
+                    dataType = main.columnSortNodeList[index].dataType,         //排序的指定欄位資料格式
+                    data = main.data[main.dataIndex],                           //排序的指定資料來源
+                    newData;                                                    //排序完的新自訂資料物件[頁][欄][列]=>値
                 /************************************************/
                 /*
                     排序的CSS shape change
                 */
                 if (isToogle = !isToogle) {
-                    current.node.classList.remove("triangle_down");
-                    current.node.classList.add("triangle_up");
-                }
-                else {
                     current.node.classList.remove("triangle_up");
                     current.node.classList.add("triangle_down");
+                }
+                else {
+                    current.node.classList.remove("triangle_down");
+                    current.node.classList.add("triangle_up");
                 }
                 /************************************************/
                 /*
@@ -813,8 +893,9 @@ var TableManager = function (obj) {
                 //重新定義數據元件
                 main.refine_JsonData(main.sortedObject[sortName]);
                 //console.log('sorted', sortName);
-                main.currentPage = 1
-                main.display_data(main.currentPage);
+                //重新刷新指定頁物件並回到第一頁
+                main.refresh_specifiedPageControl_pageIndex(1);
+                //main.pageControl.specifiedPageList[(main.currentPage - 1) % 10]
                 main.pageControl.incrementPageList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
                 //console.log('sorted', main.refinedData);
             };
