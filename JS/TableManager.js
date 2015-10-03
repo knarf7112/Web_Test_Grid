@@ -404,7 +404,7 @@ var TableManager = function (obj) {
                     "line-height": "50px",  //textContent下移
                     "visibility": "visible"
                 },
-                value: category,
+                value: "",//category,
                 category: category,
                 type: "page_control"
             };
@@ -415,14 +415,32 @@ var TableManager = function (obj) {
                 data.nodeCSS["visibility"] = "hidden";//隱藏起來(暫時不用)
                 break;
             case "-10":
+                data.node.classList.add('double_arrow_left');
+                data.nodeCSS["width"] = (main.width / 16) + 'px';//分成16等份來切區塊//"50px";
+                data.nodeCSS["left"] = (+main.pageControl.incrementPageList[index - 1].nodeCSS['width'].split('px')[0] + +main.pageControl.incrementPageList[index - 1].nodeCSS['left'].split('px')[0]) + "px";
+                break;
             case "-1":
+                data.node.classList.add('arrow_left');
+                data.nodeCSS["width"] = (main.width / 16) + 'px';//分成16等份來切區塊//"50px";
+                data.nodeCSS["left"] = (+main.pageControl.incrementPageList[index - 1].nodeCSS['width'].split('px')[0] + +main.pageControl.incrementPageList[index - 1].nodeCSS['left'].split('px')[0]) + "px";
+                break;
             case "+1":
+                data.node.classList.add('arrow_right');
+                data.nodeCSS["width"] = (main.width / 16) + 'px';//分成16等份來切區塊//"50px";
+                data.nodeCSS["left"] = (+main.pageControl.incrementPageList[index - 1].nodeCSS['width'].split('px')[0] + +main.pageControl.incrementPageList[index - 1].nodeCSS['left'].split('px')[0]) + "px";
+                break;
             case "+10":
+                data.node.classList.add('double_arrow_right');
+                data.nodeCSS["width"] = (main.width / 16) + 'px';//分成16等份來切區塊//"50px";
+                data.nodeCSS["left"] = (+main.pageControl.incrementPageList[index - 1].nodeCSS['width'].split('px')[0] + +main.pageControl.incrementPageList[index - 1].nodeCSS['left'].split('px')[0]) + "px";
+                break;
             case "max":
+                data.node.classList.add('right_end');
                 data.nodeCSS["width"] = (main.width / 16) + 'px' ;//分成16等份來切區塊//"50px";
                 data.nodeCSS["left"] = (+main.pageControl.incrementPageList[index - 1].nodeCSS['width'].split('px')[0] + +main.pageControl.incrementPageList[index - 1].nodeCSS['left'].split('px')[0]) + "px";
                 break;
             case "min":
+                data.node.classList.add('left_end');
                 data.nodeCSS["width"] = "50px";
                 data.nodeCSS["left"] = "0px";
                 break;
