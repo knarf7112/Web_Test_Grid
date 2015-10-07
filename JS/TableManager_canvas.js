@@ -66,13 +66,14 @@ var TableManager = function (obj) {
         //1.建立展示資料元素
         this.createDisplayNode();
         //2.重新定義元素結構
-        //this.redefineGridNodesStruct();
+        this.redefineGridNodesStruct();
         //2-1.設定欄位順序陣列
-        //this.set_columnSequenceArray();
+        this.set_columnSequenceArray();
         //3.設定主grid元素外框CSS style
         //this.set_gridRootNodeStyle();
         //4.刷新Grid的所有元素style
         //this.refresh_allDisplayElementCssStyle();
+        this.refresh_DisplayElement_canvas();
         //5.建立flexi bar
         //this.createResizeBar();
         //6.refresh flexi bar css style 
@@ -107,8 +108,10 @@ var TableManager = function (obj) {
     //1.建立展示資料元素
     this.createDisplayNode = function () {
         //建立展示資料元素
-        this.gridElement = this.new.create("canvas", 1, 'canvas');
-        console.log('dom:', this.gridElement);
+        this.gridElement = this.new.createElement("canvas", 'canvas');
+        //console.log('dom:', this.gridElement);
+        this.gridElement.setAttribute("width", this.width);
+        this.gridElement.setAttribute("height", this.height);
         this.mainElement.appendChild(this.gridElement);
     };
     //2.設定自定義的node結構
@@ -116,13 +119,14 @@ var TableManager = function (obj) {
         var main = this,
             container = [],
             innerContainer = [],
-            allChilds = this.gridElement.children;
+            allChilds,
+            length = (this.gridElement.children.length > 0) ? (allChilds = this.gridElement.children,this.gridElement.children.length) : this.column * this.row;
             
         //set every column width and height(設定欄位平均寬度和厚度)
         main.columnWidth = (main.width / main.column);
         main.rowHeight = (main.height / main.row);
 
-        for (var elementIndex = 0; elementIndex < allChilds.length; elementIndex++) {
+        for (var elementIndex = 0; elementIndex < length; elementIndex++) {
             var rowIndex = (elementIndex % main.row),
                 columnIndex = Math.floor(elementIndex / this.row),
                 isHeader = (elementIndex % main.row == 0),
@@ -143,7 +147,7 @@ var TableManager = function (obj) {
                         backgroundColor: isHeader ? "rgb(120, 207, 207)" : "rgb(174, 233, 233)",
                         overflow: "hidden"
                     },
-                    node: allChilds[elementIndex],
+                    node: new pseudoDOM(columnIndex + "-" + rowIndex, (columnIndex * main.columnWidth), (rowIndex * main.rowHeight), (main.columnWidth), (main.rowHeight)),//allChilds[elementIndex],
                     nodeAttributes: isHeader ? {
                         draggable: true
                     } : {},
@@ -195,10 +199,42 @@ var TableManager = function (obj) {
                     }
                     //若為header 設定可拖曳屬性
                     if (main.refineNodeTable[column_Index][rowIndex].type === "header") {
+                       
+                        main.refineNodeTable[column_Index][rowIndex].node.setAttribute(attribute, main.refineNodeTable[column_Index][rowIndex].nodeAttributes[attribute]);
+                        
+                    }
+                }
+                else {
+                    //指定刷新
+                    main.refineNodeTable[column_Index][rowIndex].node.style[propertyName] = main.refineNodeTable[column_Index][rowIndex].nodeCSS[propertyName];
+                }
+            }
+        }
+    };
+    this.refresh_DisplayElement_canvas = function (mainObj, columnIndex, propertyName) {
+        var main = mainObj || this,
+            ctx = main.gridElement.getContext("2d"),
+            tempObj;
+        //object css set into element css style 刷新所有展
+        for (var column_Index = columnIndex || 0; column_Index < main.column; column_Index++) {
+            for (var rowIndex = 0; rowIndex < main.row; rowIndex++) {
+                //若無指定CSS屬性名稱
+                if (!propertyName) {
+                    tempObj = main.refineNodeTable[column_Index][rowIndex];
+                    tempObj.node.style["backgroundColor"] = tempObj.nodeCSS["backgroundColor"];
+                    tempObj.node.save_restore(ctx, tempObj.node.draw_rect);
+                    /*
+                    //全部刷新
+                    for (var property in main.refineNodeTable[column_Index][rowIndex].nodeCSS) {
+                        main.refineNodeTable[column_Index][rowIndex].node.style[property] = main.refineNodeTable[column_Index][rowIndex].nodeCSS[property];
+                    }
+                    //若為header 設定可拖曳屬性
+                    if (main.refineNodeTable[column_Index][rowIndex].type === "header") {
                         for (var attribute in main.refineNodeTable[column_Index][rowIndex].nodeAttributes) {
                             main.refineNodeTable[column_Index][rowIndex].node.setAttribute(attribute, main.refineNodeTable[column_Index][rowIndex].nodeAttributes[attribute]);
                         }
                     }
+                    */
                 }
                 else {
                     //指定刷新
@@ -1046,6 +1082,15 @@ TableManager.prototype.new = {
         rootElement = docHtml.getElementsByTagName(tagName)[0];
         console.log('create new DOM',rootElement);
         return rootElement;
+    },
+    //create single element and set class name
+    createElement:function(tagName,className){
+        var tmp = document.createElement(tagName);
+        if (className) {
+            tmp.classList.add(className)
+        }
+        console.log("create Element", tmp);
+        return tmp;
     },
     //
     createSVG: function (subNode){

@@ -75,7 +75,7 @@ pseudoDOM.prototype = {
     draw_rect: function (ctx) {
         //console.log('draw rectangle:' + this.name);
         ctx.fillStyle = this.style.backgroundColor;
-        ctx.fillRect(this.style.left, this.style.top, this.style.width, this.style.height);
+        ctx.fillRect(this.style.left + 1, this.style.top + 1, this.style.width - 1, this.style.height - 1);
     },
     //刷新矩型內的文字內容
     refresh_textContent:function(text, ctx){
