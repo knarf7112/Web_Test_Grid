@@ -393,6 +393,15 @@ var TableManager = function (obj) {
             */
             mainObj.columnSortNodeList[index].nodeCSS[propertyName] = resizeBar_Left - 15 + "px";
             mainObj.columnSortNodeList[index].node.style[propertyName] = mainObj.columnSortNodeList[index].nodeCSS[propertyName];
+            //超出Grid範圍
+            if (resizeBar_Left - 15 > mainObj.width) {
+                mainObj.columnSortNodeList[index].nodeCSS["visibility"] = "hidden";
+                mainObj.columnSortNodeList[index].node.style["visibility"] = mainObj.columnSortNodeList[index].nodeCSS["visibility"];
+            }
+            else {
+                mainObj.columnSortNodeList[index].nodeCSS["visibility"] = "visible";
+                mainObj.columnSortNodeList[index].node.style["visibility"] = mainObj.columnSortNodeList[index].nodeCSS["visibility"];
+            }
         }
         /*
             (若縮到小於原始canvas寬度)清除最後一塊矩陣
@@ -789,8 +798,9 @@ var TableManager = function (obj) {
                 //console.log("順序", main.columnSequence[columnIndex], main.refinedData[pageIndex][main.columnSequence[columnIndex]][rowIndex]);
                 //欄位資料依據欄位陣列順序排列
                 main.refineNodeTable[columnIndex][rowIndex].value = main.refinedData[pageIndex][main.columnSequence[columnIndex]][rowIndex] || "";
+                //設定psuedoDOM資料
                 main.refineNodeTable[columnIndex][rowIndex].node.textContent = main.refineNodeTable[columnIndex][rowIndex].value;
-                main.refineNodeTable[columnIndex][rowIndex].node.refresh_textContent(ctx);//刷新
+                main.refineNodeTable[columnIndex][rowIndex].node.refresh_textContent(ctx);//刷新canvas
             }
         }
     };
@@ -895,6 +905,7 @@ var TableManager = function (obj) {
                     //backgroundColor: "red",
                     //width: "10px",
                     //height: "10px",
+                    visibility:"visible",
                     left: default_left + "px",
                     top: "5px"
                 },
