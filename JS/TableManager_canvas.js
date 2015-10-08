@@ -73,34 +73,34 @@ var TableManager = function (obj) {
         //this.set_gridRootNodeStyle();
         //4.刷新Grid的所有元素style
         //this.refresh_allDisplayElementCssStyle();
-        this.refresh_DisplayElement_canvas();
+        this.refresh_allDisplayElement_canvas();
         //5.建立flexi bar
-        //this.createResizeBar();
+        this.createResizeBar();
         //6.refresh flexi bar css style 
-        //this.refresh_ResizeBarCssStyle();
+        this.refresh_ResizeBarCssStyle();
         //7.flexi bar bind mouse evnt and calculate X range(Closure)
-        //this.bind_event_ResizeBar();
+        this.bind_event_ResizeBar();
         //8.建立(遞增或遞減)切頁元件
-        //this.createIncrementPageControl();
+        this.createIncrementPageControl();
         //9.設定(遞增或遞減)切頁元件CSS Style
-        //this.set_incrementPageControl_CSS();
+        this.set_incrementPageControl_CSS();
         //10.(遞增或遞減)切頁事件綁定
-        //this.bind_event_incrementPageControl();
+        this.bind_event_incrementPageControl();
         //11.建立(指定頁)切頁元件(1~10個)
-        //this.createSpecifiedPageControl();
+        this.createSpecifiedPageControl();
         //12.刷新(指定頁)切頁元件CSS與値
-        //this.set_specifiedPageControl_CSS();
+        this.set_specifiedPageControl_CSS();
         //13.綁定(指定頁)切頁事件
-        //this.bind_event_specifiedPageControl();
+        this.bind_event_specifiedPageControl();
 
         //11.欄位拖曳資料交換事件綁定--作欄與欄資料交換
         //this.event_bind_header();
         //12.建立欄位排序元件
-        //this.createSortNodeList();
+        this.createSortNodeList();
         //13.設定欄位排序元件CSS
-        //this.set_columnSortNode_CSS();
+        this.set_columnSortNode_CSS();
         //14.欄位排序元素click事件綁定
-        //this.bind_event_columnSortNode();
+        this.bind_event_columnSortNode();
     };
     /*
         資料表格元件
@@ -211,7 +211,7 @@ var TableManager = function (obj) {
             }
         }
     };
-    this.refresh_DisplayElement_canvas = function (mainObj, columnIndex, propertyName) {
+    this.refresh_allDisplayElement_canvas = function (mainObj, columnIndex, propertyName) {
         var main = mainObj || this,
             ctx = main.gridElement.getContext("2d"),
             tempObj;
@@ -222,7 +222,7 @@ var TableManager = function (obj) {
                 if (!propertyName) {
                     tempObj = main.refineNodeTable[column_Index][rowIndex];
                     tempObj.node.style["backgroundColor"] = tempObj.nodeCSS["backgroundColor"];
-                    tempObj.node.save_restore(ctx, tempObj.node.draw_rect);
+                    tempObj.node.refresh_textContent(ctx);
                     /*
                     //全部刷新
                     for (var property in main.refineNodeTable[column_Index][rowIndex].nodeCSS) {
@@ -280,8 +280,8 @@ var TableManager = function (obj) {
             main.ResizeBarNodeList.push(data);//加入主物件
         });
         //console.log('init flexi bar', main.ResizeBarNodeList.map(function (current, index, array) { return current.forward_width; }))
-        //輸出到Grid元素上
-        main.gridElement.appendChild(main.ResizeBarRootNode);
+        //輸出到main元素上
+        main.mainElement.appendChild(main.ResizeBarRootNode);
     };
     //6.refresh flexi bar css style 
     this.refresh_ResizeBarCssStyle = function (mainObj, columnIndex, propertyName) {
@@ -350,6 +350,8 @@ var TableManager = function (obj) {
     };
     //7-1.更新指定與其相關的dispaly物件和flexi bar物件的width值與left值(update specified column width and others left, update specified flexi bar width and others left )
     this._update_nodeCSS_CssStyle = function ( mainObj, columnIndex, x_range, propertyName) {
+        var ctx = mainObj.gridElement.getContext("2d");//取得canvas的context
+        var lastResizBar_Left = 0;//
         for (var index = columnIndex ; index < mainObj.ResizeBarNodeList.length; index++) {
             /**********************************************************/
             //(指定的拖曳軸)預設left + 上次變化量 + 本次變化量 => (指定拖曳軸)本次所需移動的left位置
@@ -371,8 +373,9 @@ var TableManager = function (obj) {
                 mainObj.refineNodeTable[index].forEach(function (currentElement, innerIndex, array) {
                     //更新display元素的nodeCSS內指定的屬性值
                     currentElement.nodeCSS['width'] = (mainObj.ResizeBarNodeList[index].forward_width + x_range) + "px";//前一次的寬度値 + 變化量
-                    //更新display元素的指定CSS style
-                    currentElement.node.style['width'] = currentElement.nodeCSS['width'];
+                    //更新canvas的
+                    currentElement.node.style.width = +currentElement.nodeCSS['width'].split("px")[0];//cast to number
+                    currentElement.node.refresh_textContent(ctx);
                 });
             }
             else {
@@ -380,7 +383,8 @@ var TableManager = function (obj) {
                 mainObj.refineNodeTable[index].forEach(function (currentElement, innerIndex, array) {
                     //前一個元素的預設值位置 + 之前累積的變化量 + 這次的變化量
                     currentElement.nodeCSS[propertyName] = (mainObj.ResizeBarNodeList[index - 1].default_left + mainObj.ResizeBarNodeList[index-1].X_deviation + x_range) + 'px';//
-                    currentElement.node.style[propertyName] = currentElement.nodeCSS[propertyName];
+                    currentElement.node.style.left = +currentElement.nodeCSS[propertyName].split("px")[0];
+                    currentElement.node.refresh_textContent(ctx);
                 });
             }
             /**********************************************************/
@@ -389,6 +393,15 @@ var TableManager = function (obj) {
             */
             mainObj.columnSortNodeList[index].nodeCSS[propertyName] = resizeBar_Left - 15 + "px";
             mainObj.columnSortNodeList[index].node.style[propertyName] = mainObj.columnSortNodeList[index].nodeCSS[propertyName];
+        }
+        /*
+            (若縮到小於原始canvas寬度)清除最後一塊矩陣
+        */
+        lastResizBar_Left = +mainObj.ResizeBarNodeList[mainObj.ResizeBarNodeList.length - 1].nodeCSS.left.split("px")[0];
+        //console.log("last left", lastResizBar_Left);
+        //若所有欄位累計寬度比原來的預設小,就清除後面的多餘矩形
+        if (lastResizBar_Left < mainObj.gridElement.width) {
+            ctx.clearRect(lastResizBar_Left, 0, mainObj.gridElement.width - lastResizBar_Left, mainObj.gridElement.height);
         }
         //console.log('Move refinedNodeList', mainObj.refineNodeTable);
     };
@@ -682,7 +695,7 @@ var TableManager = function (obj) {
         //設定當前指定頁的slect屬性與背景色
         main.pageControl.specifiedPageList[(main.currentPage - 1) % 10].set_select(true);
         //刷新顯示資料
-        main.display_data(main.currentPage);
+        main.display_data_canvas(main.currentPage);
     };
     //13.綁定(指定頁)切頁事件
     this.bind_event_specifiedPageControl = function () {
@@ -699,7 +712,7 @@ var TableManager = function (obj) {
                 tmpCurrentPageIndex = current.pageIndex;//取得物件內page屬性的值
                 console.log("page click: " + currentIndex, 'Control object PageIndex:',current.pageIndex);
                 main.currentPage = tmpCurrentPageIndex;//變更主物件的當前頁屬性値
-                main.display_data(main.currentPage);//依據頁値刷新顯示資料
+                main.display_data_canvas(main.currentPage);//依據頁値刷新顯示資料
                 main.pageControl.specifiedPageList[(main.currentPage - 1) % 10].set_select(true);//變更本次指定頁物件的select屬性並變更背景色
             }
         });
@@ -716,7 +729,7 @@ var TableManager = function (obj) {
             this.dataIndex += 1;//目前所使用的厡始資料索引
             this.refine_JsonData(data);//將注入資料轉換成自訂格式物件(即refinedData[頁][欄][列])
             this.currentPage = 1;//定義當前頁屬性為第1頁
-            this.display_data(this.currentPage);//使用自定格式物件刷新頁面
+            this.display_data_canvas(this.currentPage);//使用自定格式物件刷新頁面
             this.pageControl.specifiedPageList[this.currentPage - 1].set_select(true);//變更指定頁物件的select屬性並變更背景
             this._refresh_columnSortName();//
             //頁狀態物件的元素屬性(node => DOM)
@@ -765,6 +778,19 @@ var TableManager = function (obj) {
                 //欄位資料依據欄位陣列順序排列
                 main.refineNodeTable[columnIndex][rowIndex].value = main.refinedData[pageIndex][main.columnSequence[columnIndex]][rowIndex] || "";
                 main.refineNodeTable[columnIndex][rowIndex].node.textContent = main.refineNodeTable[columnIndex][rowIndex].value;
+            }
+        }
+    };
+    this.display_data_canvas = function (pageIndex) {
+        var main = this,
+            ctx = main.gridElement.getContext("2d");
+        for (var columnIndex = 0; columnIndex < main.refineNodeTable.length; columnIndex++) {
+            for (var rowIndex = 0; rowIndex < main.refineNodeTable[columnIndex].length; rowIndex++) {
+                //console.log("順序", main.columnSequence[columnIndex], main.refinedData[pageIndex][main.columnSequence[columnIndex]][rowIndex]);
+                //欄位資料依據欄位陣列順序排列
+                main.refineNodeTable[columnIndex][rowIndex].value = main.refinedData[pageIndex][main.columnSequence[columnIndex]][rowIndex] || "";
+                main.refineNodeTable[columnIndex][rowIndex].node.textContent = main.refineNodeTable[columnIndex][rowIndex].value;
+                main.refineNodeTable[columnIndex][rowIndex].node.refresh_textContent(ctx);//刷新
             }
         }
     };
@@ -825,7 +851,7 @@ var TableManager = function (obj) {
                     //console.log('end', selectColumnB);
                     main._swap(main.columnSequence, selectColumnA, selectColumnB);//交換起始與結束的索引順序
                     main._swap_columnSortNode_sortName(selectColumnA, selectColumnB);//交換排序的欄位數據
-                    main.display_data(main.currentPage);
+                    main.display_data_canvas(main.currentPage);
                 };
                 //若有drag事件就不會有mouseup事件
                 //current[0].node.onmouseup = function (e) {
@@ -879,7 +905,7 @@ var TableManager = function (obj) {
             main.columnSortNodeList.push(data);//加入columnSortNodeList陣列
         });
         //輸出到Grid元素上
-        main.gridElement.appendChild(main.columnSortedRootNode);
+        main.mainElement.appendChild(main.columnSortedRootNode);
     };
     //(私)數據注入時,刷新columnSortName屬性值
     this._refresh_columnSortName = function () {

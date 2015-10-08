@@ -71,15 +71,20 @@ pseudoDOM.prototype = {
     /*
       draw function
     */
-    //畫外框
+    //畫矩形(清除後再畫會內縮1px)
     draw_rect: function (ctx) {
         //console.log('draw rectangle:' + this.name);
+        ctx.clearRect(this.style.left, this.style.top, this.style.width, this.style.height);
         ctx.fillStyle = this.style.backgroundColor;
-        ctx.fillRect(this.style.left + 1, this.style.top + 1, this.style.width - 1, this.style.height - 1);
+        ctx.fillRect(this.style.left + 1, this.style.top + 1, this.style.width - 2, this.style.height - 2);
     },
-    //刷新矩型內的文字內容
-    refresh_textContent:function(text, ctx){
-        this.textContent = "" + text;
+    //清除矩形
+    clear_rect:function(ctx){
+        ctx.clearRect(this.style.left, this.style.top, this.style.width, this.style.height);
+    },
+    //刷新矩型內的文字內容(先畫矩形再畫文字內容)
+    refresh_textContent:function(ctx, text){
+        this.textContent = text || this.textContent;
         this.save_restore(ctx, this.draw_rect);//重畫矩形
         this.save_restore(ctx, this.draw_text);//重畫文字內容
     },

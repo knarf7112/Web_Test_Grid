@@ -1,6 +1,7 @@
 ﻿<!DOCTYPE html>
 <html>
 <head>
+    <link rel="stylesheet" href="CSS/TableManager.css" />
     <style>
         #canvas{
             position:absolute;
@@ -13,6 +14,45 @@
             width:800px;
             height:600px;
             */
+        }
+        .ResizeBar{
+            /*border:1px solid red;*/
+            cursor:col-resize;
+        }
+        .page_control{
+            /*position:relative;
+            width: 100%;
+            height: 10%;*/
+            cursor:pointer;
+        }
+        .multiple_page_control>.multiple_page_control,.page_control>.page_control{
+            cursor:pointer;
+            /*
+                禁止文字選取
+            */
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select:none;
+        }
+        .triangle_up{
+            width:0px;
+            height:0px;
+            /*transparent=透明*/
+            border-left:5px solid transparent;
+            border-right:5px solid transparent;
+            border-bottom:10px solid red;
+            cursor:pointer;
+        }
+        .triangle_down{
+            width:0px;
+            height:0px;
+            border-left:5px solid transparent;
+            border-right:5px solid transparent;
+            border-top:10px solid red;
+            cursor:pointer;
         }
         #test{
             position:absolute;
@@ -52,6 +92,8 @@
         var div1 = document.getElementById('test');
         var testGrid = new TableManager({ mainElement: div1 });
         testGrid.init();
+        testGrid.JsonDataLoad(//testObj);//借來的JSON數據
+                                  test.content, refinedFunction);//kai的數據
     </script>
     <!--test psuedoDOM Simple Grid function -->
     <!--
