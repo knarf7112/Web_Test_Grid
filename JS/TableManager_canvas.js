@@ -60,7 +60,9 @@ var TableManager = function (obj) {
     //sort
     this.columnSortNodeList = [];
     //排序過的數據
-    this.sortedObject ={};
+    this.sortedObject = {};
+    //主DOM下的DOM容器
+    this.mainContainer;
     //初始化
     this.init = function () {
         //1.建立展示資料元素
@@ -107,6 +109,7 @@ var TableManager = function (obj) {
     */
     //1.建立展示資料元素
     this.createDisplayNode = function () {
+        
         //建立展示資料元素
         this.gridElement = this.new.createElement("canvas", 'canvas');
         //console.log('dom:', this.gridElement);
@@ -327,8 +330,13 @@ var TableManager = function (obj) {
             if (moveFlag) {
                 main.X_end = e.pageX;//X axis end position
                 //console.log("srcollLeft", document.body.scrollLeft, "main.X_end", main.X_end, "main.X_start", main.X_start);
+                var x_range = (document.body.scrollLeft + main.gridElement.scrollLeft + main.X_end - main.X_start);//取得間距
+                //設定最小間距
+                if (main.ResizeBarNodeList[ResizeBarIndex].forward_width + x_range < 30) {
+                    x_range = 30 - main.ResizeBarNodeList[ResizeBarIndex].forward_width;
+                }
                 //取得移動間距差(設定目前指定索引的間距)
-                main.ResizeBar_X_rangeList[ResizeBarIndex] = (document.body.scrollLeft + main.gridElement.scrollLeft + main.X_end - main.X_start);//取得間距
+                main.ResizeBar_X_rangeList[ResizeBarIndex] = x_range;//(document.body.scrollLeft + main.gridElement.scrollLeft + main.X_end - main.X_start);//取得間距
                 //console.log("Range", main.ResizeBar_X_rangeList[ResizeBarIndex], "Index", ResizeBarIndex);
 
                 //更新flexi bar並累計最後的X軸偏移量
