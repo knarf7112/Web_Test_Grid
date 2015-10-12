@@ -20,17 +20,11 @@ var Slider = function (obj) {
     //parent node
     this.parentNode = obj.parentNode;
     //main node
-    this.mainNode;
+    this.main = { node: undefined, style: {} };
     //slider
-    this.sliderNode;
+    this.slider = { node: undefined, style: {} };
     //slider bar
-    this.sliderBarNode;
-    /*
-        DOM inline CSS Style Object
-    */
-    this.style;
-    this.slider.style = {};
-    this.sliderBar.style = {};
+    this.sliderBar = { node: undefined, style: {} };
 
     /*
         operate function
@@ -44,17 +38,18 @@ var Slider = function (obj) {
     };
     //1.create main DOM and sliderBar Dom and slider DOM
     this._createSlider = function () {
-        var main = this;
-        main.mainNode = main.createElement("div", undefined, "Slider");
+        var that = this;
+        that.main.node = that.createElement("div", undefined, "Slider");
 
-        main.sliderNode = main.createElement("span", "slider");
+        that.slider.node = that.createElement("span", "slider");
 
-        main.sliderBarNode = main.createElement("div", "sliderBar");
+        that.sliderBar.node = that.createElement("div", "sliderBar");
 
         //appendChild
-        main.sliderBarNode.appendChild(main.sliderNode);
-        main.mainNode.appendChild(main.sliderBarNode);
-        main.parentNode.appendChild(main.mainNode);
+        that.sliderBar.node.appendChild(that.slider.node);
+        that.main.node.appendChild(that.sliderBar.node);
+
+        that.parentNode.appendChild(that.main.node);
     };
     //
     this._bind_event_slider = function () {
@@ -77,6 +72,14 @@ var Slider = function (obj) {
             return;
         }
         this.max = +value;
+    };
+    //還需要取得兩邊的差與差跟差之間的倍數,再來是移動多少px算一個Step,一個step要乘上差跟差之間的倍數就是背幕所需要移動的位置
+    //比例計算 x:y = a:b => a*y = x*b (x:原來尺寸;y:放大後的尺寸;a:需要依比例縮小的寬度;b:固定不變的寬度;)
+    this.scale = function (x, y, b) {
+        var a;
+        a = ((x * b) / y).toFixed(2);//取到小數後兩位
+        console.log("結果", a);
+        return a;
     };
     this.init();
 };
