@@ -67,8 +67,16 @@
             border:1px dotted red;
             width:800px;
             height:300px;
-            top:1000px;
+            top:800px;
             left:100px;
+        }
+        #testSlider2{
+            position:absolute;
+            border:1px dotted red;
+            width:500px;
+            height:300px;
+            top:800px;
+            left:1000px;
         }
     </style>
 <meta http-equiv="Content-Type" content="charset=utf-8"/>
@@ -99,18 +107,26 @@
     <!--test Tablemanager include psuedoDOM -->
     <div id="test"></div>
     <div id="testSlider"></div>
+    <div id="testSlider2"></div>
     <script>
         var div1 = document.getElementById('test');
         var testGrid = new TableManager({ mainElement: div1 });
         testGrid.init();
         testGrid.JsonDataLoad(//testObj);//借來的JSON數據
                                   test.content, refinedFunction);//kai的數據
-
+        
         /*
             slider test
         */
         var parentNode = document.getElementById('testSlider');
-        var slider = new Slider({ parentNode: parentNode });
+        var parentNode2 = document.getElementById('testSlider2');
+        var slider = new Slider();
+        slider.insertToNode(parentNode);
+        slider.set_minValue(800);
+        slider.set_maxValue(1200);
+        //setTimeout(function () {
+        //    slider.set_maxValue(1800);
+        //}, 3000);
     </script>
     <!--test psuedoDOM Simple Grid function -->
     <!--

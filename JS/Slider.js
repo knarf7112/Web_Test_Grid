@@ -10,21 +10,46 @@ var Slider = function (obj) {
     /*
         variable
     */
+    //最大値
     this.max;
+    //最小值
     this.min;
+    //當前値
     this.currentValue;
-
+    //最大値-最小値
+    this.range;
+    //幕與bar條的單位比値
+    this.ratio;
+    //幕的出書
+    this.outputRange = { start: 0, end: 0 };
+    //滑鼠起訖位置pageX
+    this.x_start;
+    this.x_end;
     /*
         DOM
     */
     //parent node
-    this.parentNode = obj.parentNode;
+    this.parentNode;// = obj.parentNode;
     //main node
-    this.main = { node: undefined, style: {} };
+    this.main = {
+        node: undefined,
+        style: {}
+    };
     //slider
-    this.slider = { node: undefined, style: {} };
+    this.slider = {
+        node: undefined,
+        style: {
+            left: "0px"
+        },
+        width: 0
+    };
     //slider bar
-    this.sliderBar = { node: undefined, style: {} };
+    this.sliderBar = {
+        node: undefined,
+        
+        style: {},
+        width: 0
+    };
 
     /*
         operate function
@@ -34,9 +59,9 @@ var Slider = function (obj) {
         //1. create element and append to document
         this._createSlider();
         //2. bind event
-
+        this._bind_event_slider();
     };
-    //1.create main DOM and sliderBar Dom and slider DOM
+    //create main DOM and sliderBar Dom and slider DOM
     this._createSlider = function () {
         var that = this;
         that.main.node = that.createElement("div", undefined, "Slider");
@@ -49,29 +74,122 @@ var Slider = function (obj) {
         that.sliderBar.node.appendChild(that.slider.node);
         that.main.node.appendChild(that.sliderBar.node);
 
-        that.parentNode.appendChild(that.main.node);
     };
-    //
+    //bind mouse event to change position
     this._bind_event_slider = function () {
-        var main = this;
-        
-        main.sliderNode.onmousedown = function (event) {
-
+        var main = this,
+            sliderFlag = false,
+            sliderLeft;
+        main.slider.node.onmousedown = function (e) {
+            sliderFlag = true;
+            main.x_start = e.pageX;
+            console.log("滑鼠按下位置", main.x_start);
+            this.style.opacity = "0.4";
         };
-        main.sliderNode.onmousemove = function (event) {
-
+        main.sliderBar.node.onmousedown = function (e) {
+            e.stopPropagation();
+            
         };
-        main.sliderNode.onmouseup = function (event) {
-
+        main.slider.node.onmousemove = function (e) {
+            if (sliderFlag) {
+                //operate out side function and carry slider move parameter
+                //計算移動間距
+                var range = main._calulate_mouseMove_Range(e.pageX, main.x_start);
+                //移動必須介於範圍之間
+                sliderLeft = +main.slider.style.left.split("px")[0] + range;
+                if (sliderLeft < 0) {
+                    sliderLeft = 0;
+                }
+                else if (sliderLeft > main.range / main.ratio) {
+                    
+                    //sliderLeft = main.range / main.ratio;
+                }
+                //變更slider位置
+                main.refresh_node_CssStyle(main.slider.node,{ left: sliderLeft + "px" });
+            }
         };
+        main.slider.node.onmouseleave = function (e) {
+            if (sliderFlag) {
+                console.log("因超出slider元素範圍,所以代為執行mouseup事件");
+                document.body.onmouseup(e);
+            }
+        };
+        document.body.onmouseup = function (e) {
+            if (sliderFlag) {
+                sliderFlag = false;
+                console.log("mouse up", sliderLeft);
+                e.target.style.opacity = "";
+                main._refresh_slider_CssStyle({ left: sliderLeft + "px" });
+            }
+        };
+    };
+    //calculate mouse move range => scroll end x minus start x
+    this._calulate_mouseMove_Range = function (x_end, x_start) {
+        return document.body.scrollLeft + x_end - x_start;
     }
-    //
+    //append a slider main node to parent node
+    this.insertToNode = function (parent) {
+        var that = this;
+        if (parent instanceof HTMLElement) {
+            //append to parent node
+            parent.appendChild(that.main.node);
+            //set min and init data
+            //that._set_initial_data();
+        }
+        else {
+            throw new Error("輸入參數非HTML元素");
+        }
+    };
+    //設定初始會用到的數據
+    this._set_initial_data = function () {
+        var that = this;
+        
+        that.set_minValue(that.slider.node.offsetWidth);
+        that.set_maxValue(that.sliderBar.node.clientWidth);
+        console.log("init:", that.slider.node.offsetWidth, that.sliderBar.node.clientWidth);
+    };
+    //設定Slider的最大値
     this.set_maxValue = function (value) {
+        var that = this,
+            newSliderWidth = 0;
         if (isNaN(Number(value))) {
             console.log("parameter must be a number:" + value);
             return;
         }
-        this.max = +value;
+        //若要設定的最大値小於物件的最小值則隱藏整個slider
+        if (+value <= that.min) {
+            that.refresh_node_CssStyle(that.main.node, { visibility: "hidden" });
+        }
+        else {
+            that.refresh_node_CssStyle(that.main.node, { visibility: "visible" });
+        }
+        //update max value
+        that.max = +value;
+        console.log("SliderBar最大値:", that.max);
+        //recalculate slider width
+        newSliderWidth = that.scale(that.min, that.max, that.sliderBar.width);
+        //設定比値
+        that.ratio = (that.max / that.sliderBar.width).toFixed(4);
+        console.log("比値:", that.ratio);
+        //設定最大最小的差値
+        that.range = that.max - that.min;
+        //
+        that.slider.width = newSliderWidth;
+        //refresh slider node style
+        that.refresh_node_CssStyle(that.slider.node, { width: that.slider.width + "px" });
+    };
+    //設定Slider的最小値
+    this.set_minValue = function (value) {
+        var that = this;
+        if (isNaN(Number(value))) {
+            throw new Error("最小值設定錯誤:參數代有非數字" + value);
+        }
+        if (+value < 10) {
+            value = 10;
+        }
+        that.min = Math.round(+value);
+        that.sliderBar.width = that.min;//set slider bar width
+        console.log("SliderBar最小値:", that.min);
     };
     //還需要取得兩邊的差與差跟差之間的倍數,再來是移動多少px算一個Step,一個step要乘上差跟差之間的倍數就是背幕所需要移動的位置
     //比例計算 x:y = a:b => a*y = x*b (x:原來尺寸;y:放大後的尺寸;a:需要依比例縮小的寬度;b:固定不變的寬度;)
@@ -81,12 +199,22 @@ var Slider = function (obj) {
         console.log("結果", a);
         return a;
     };
+    //刷新slider物件的屬性數據與DOM inline Style
+    this._refresh_slider_CssStyle = function (cssStyleObj) {
+        var that = this;
+        //刷新物件屬性數據
+        that.set_Obj_style(that.slider.style, cssStyleObj);
+        //刷新DOM inline style
+        that.refresh_node_CssStyle(that.slider.node, cssStyleObj);
+    };
     this.init();
 };
 /*
     Slider prototype (shared function and variable)
 */
 Slider.prototype = {
+    //覆蓋constructor指標
+    constructor:Slider,
     min: 0, max: 0,currentValue:0,
     slider:{
         style: {
@@ -95,8 +223,8 @@ Slider.prototype = {
     },
     sliderBar:{
         style: {
-            width: "100%",
-            height: "13px",
+            //width: "100%",
+            //height: "13px",
 
         }
     },
@@ -122,7 +250,11 @@ Slider.prototype = {
             throw new Error("parameter is not Object");
         }
         for (var property in CssStyleObj) {
-            myObj[property] = CssStyleObj[CssStyleObj];
+            //若已設定過則跳過(不重覆設定)
+            if (myObj[property] === CssStyleObj[property]) {
+                continue;
+            }
+            myObj[property] = CssStyleObj[property];
         }
     },
     //依據輸入物件的屬性值來刷新DOM元素的Style屬性
@@ -131,6 +263,10 @@ Slider.prototype = {
         for (var property in CssStyleObj) {
             if (element.style[property] === undefined) {
                 console.log(property + "屬性不存在於style列表");
+                continue;
+            }
+            //若已設定過則跳過(不重覆設定)
+            if (element.style[property] === CssStyleObj[property]) {
                 continue;
             }
             element.style[property] = CssStyleObj[property];

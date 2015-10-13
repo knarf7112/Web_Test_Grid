@@ -103,6 +103,8 @@ var TableManager = function (obj) {
         this.set_columnSortNode_CSS();
         //14.欄位排序元素click事件綁定
         this.bind_event_columnSortNode();
+        //15.建立Slider物件
+
     };
     /*
         資料表格元件

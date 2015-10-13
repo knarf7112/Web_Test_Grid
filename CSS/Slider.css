@@ -31,7 +31,7 @@
     background-color:rgb(211, 211, 211);
     transform:translateY(-30%);
     top:0px;
-    left:0px;
+    
 }
 .slider:hover{
     background-color:yellowgreen;
