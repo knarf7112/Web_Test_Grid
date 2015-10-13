@@ -78,12 +78,11 @@ var Slider = function (obj) {
     //bind mouse event to change position
     this._bind_event_slider = function () {
         var main = this,
-            sliderFlag = false,
-            sliderLeft;
+            sliderFlag = false;
         main.slider.node.onmousedown = function (e) {
             sliderFlag = true;
             main.x_start = e.pageX;
-            console.log("滑鼠按下位置", main.x_start);
+            //console.log("滑鼠按下位置", main.x_start);
             this.style.opacity = "0.4";
         };
         main.sliderBar.node.onmousedown = function (e) {
@@ -96,30 +95,31 @@ var Slider = function (obj) {
                 //計算移動間距
                 var range = main._calulate_mouseMove_Range(e.pageX, main.x_start);
                 //移動必須介於範圍之間
-                sliderLeft = +main.slider.style.left.split("px")[0] + range;
-                if (sliderLeft < 0) {
-                    sliderLeft = 0;
+                main.currentValue = +main.slider.style.left.split("px")[0] + range;
+                if (main.currentValue < 0) {
+                    main.currentValue = 0;
                 }
-                else if (sliderLeft > main.range / main.ratio) {
+                else if (main.currentValue > Math.ceil(main.range / main.ratio)) {
                     
-                    //sliderLeft = main.range / main.ratio;
+                    main.currentValue = Math.ceil(main.range / main.ratio);
+                    console.log("max range", main.currentValue);
                 }
                 //變更slider位置
-                main.refresh_node_CssStyle(main.slider.node,{ left: sliderLeft + "px" });
+                main.refresh_node_CssStyle(main.slider.node, { left: main.currentValue + "px" });
             }
         };
         main.slider.node.onmouseleave = function (e) {
             if (sliderFlag) {
-                console.log("因超出slider元素範圍,所以代為執行mouseup事件");
+                //console.log("因超出slider元素範圍,所以代為執行mouseup事件");
                 document.body.onmouseup(e);
             }
         };
         document.body.onmouseup = function (e) {
             if (sliderFlag) {
                 sliderFlag = false;
-                console.log("mouse up", sliderLeft);
+                console.log("mouse up", main.currentValue);
                 e.target.style.opacity = "";
-                main._refresh_slider_CssStyle({ left: sliderLeft + "px" });
+                main._refresh_slider_CssStyle({ left: main.currentValue + "px" });
             }
         };
     };
