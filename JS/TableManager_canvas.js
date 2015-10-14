@@ -63,6 +63,8 @@ var TableManager = function (obj) {
     this.sortedObject = {};
     //主DOM下的DOM容器
     this.mainContainer;
+    //Slider Object
+    this.slider;
     //初始化
     this.init = function () {
         //1.建立展示資料元素
@@ -104,7 +106,7 @@ var TableManager = function (obj) {
         //14.欄位排序元素click事件綁定
         this.bind_event_columnSortNode();
         //15.建立Slider物件
-
+        this.createSlider();
     };
     /*
         資料表格元件
@@ -355,6 +357,14 @@ var TableManager = function (obj) {
                 console.log("Up:X軸變化量", main.ResizeBarNodeList.map(function (current, index, array) { return current.X_deviation; }));
                 //只看寬度變化量
                 console.log("Up:寬度變化量", main.ResizeBarNodeList.map(function (current, index, array) { return current.forward_width; }));
+
+                /***************************************/
+                //取最後一根縮放桿位置當寬度(延伸畫布)
+                var lastResizeBar = main.ResizeBarNodeList[main.ResizeBarNodeList.length - 1];
+                var totalWidth = lastResizeBar.default_left + lastResizeBar.X_deviation;
+                //重算slider寬度
+                main.slider.set_maxValue(totalWidth);
+
             }
         });
     };
@@ -1108,6 +1118,35 @@ var TableManager = function (obj) {
             case "number":
                 return parseInt(data1) < parseInt(data2);
         }
+    };
+    /*
+        Slider
+    */
+    this.createSlider = function () {
+        console.log("新增Slider物件");
+        var that = this;
+        that.slider = new Slider();
+        that.slider.appendToNode(that.mainElement);
+        that.slider.set_minValue(that.width);
+        that.slider.set_maxValue(that.width);
+        //設定Slider物件委派方法的指標(即slider那邊的事件會回傳需要的translate數據回來再用table物件的方法來做刷新畫面:控制權在此)
+        that.slider.delegateFunctionPoint = function (x,y) {
+            that.translate_and_refresh_grid.call(that, x, y);//變更this指向的物件
+        }
+    };
+    //delegate function point 委派給Slider並利用slider的事件代為執行並回傳translate所需的數據
+    this.translate_and_refresh_grid = function (x, y) {
+        //console.log("deleFunction:this", this, "x", x, "y", y);//預期this要指到tablemanager_canvas物件才對
+        var main = this,
+            ctx = main.gridElement.getContext("2d");
+        for (var columnIndex = 0; columnIndex < main.refineNodeTable.length; columnIndex++) {
+            for (var rowIndex = 0; rowIndex < main.refineNodeTable[columnIndex].length; rowIndex) {
+                main.refineNodeTable[columnIndex][rowIndex].node.set_translate(x, y);
+                main.refineNodeTable[columnIndex][rowIndex].node.translate_and_refresh_textContent(ctx);
+            }
+        }
+        //main.refineNodeTable[0][1].node.set_translate(x, y);
+        //main.refineNodeTable[0][1].node.translate_and_refresh_textContent(ctx);
     };
 };
 //shared method

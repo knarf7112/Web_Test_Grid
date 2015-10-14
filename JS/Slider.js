@@ -25,11 +25,13 @@ var Slider = function (obj) {
     //滑鼠起訖位置pageX
     this.x_start;
     this.x_end;
+    //
+    this.delegateFunctionPoint;
     /*
         DOM
     */
     //parent node
-    this.parentNode;// = obj.parentNode;
+    //this.parentNode;// = obj.parentNode;
     //main node
     this.main = {
         node: undefined,
@@ -46,7 +48,6 @@ var Slider = function (obj) {
     //slider bar
     this.sliderBar = {
         node: undefined,
-        
         style: {},
         width: 0
     };
@@ -83,7 +84,7 @@ var Slider = function (obj) {
             sliderFlag = true;
             main.x_start = e.pageX;
             //console.log("滑鼠按下位置", main.x_start);
-            this.style.opacity = "0.4";
+            this.style.opacity = "0.6";
         };
         main.sliderBar.node.onmousedown = function (e) {
             e.stopPropagation();
@@ -104,22 +105,30 @@ var Slider = function (obj) {
                     main.currentValue = Math.ceil(main.range / main.ratio);
                     console.log("max range", main.currentValue);
                 }
-                //變更slider位置
+                //變更slider位置(只刷新DOM元素,未變更物件資料):暫時變更
                 main.refresh_node_CssStyle(main.slider.node, { left: main.currentValue + "px" });
             }
         };
+        
         main.slider.node.onmouseleave = function (e) {
             if (sliderFlag) {
                 //console.log("因超出slider元素範圍,所以代為執行mouseup事件");
                 document.body.onmouseup(e);
             }
         };
+        
         document.body.onmouseup = function (e) {
             if (sliderFlag) {
                 sliderFlag = false;
                 console.log("mouse up", main.currentValue);
                 e.target.style.opacity = "";
+                //變更slider位置(刷新DOM元素,且變更物件資料):永久變更
                 main._refresh_slider_CssStyle({ left: main.currentValue + "px" });
+                //依據變化的值被委派執行外部進來的方法(此為一個外部的方法指標)
+                if (!!main.delegateFunctionPoint) {
+                    console.log("slider X軸變化量:", main.currentValue);
+                    main.delegateFunctionPoint(-main.currentValue, 0);//位移畫布並刷新畫面
+                }
             }
         };
     };
@@ -128,7 +137,7 @@ var Slider = function (obj) {
         return document.body.scrollLeft + x_end - x_start;
     }
     //append a slider main node to parent node
-    this.insertToNode = function (parent) {
+    this.appendToNode = function (parent) {
         var that = this;
         if (parent instanceof HTMLElement) {
             //append to parent node

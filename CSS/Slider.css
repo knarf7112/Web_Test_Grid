@@ -3,10 +3,10 @@
 */
 #Slider{
     position:absolute;
-    border:1px solid red;
+    /*border:1px solid red;*/
     width:100%;
-    height:50px;
-    top:0px;
+    height:25px;
+    top:595px;
     left:0px;
 }
 /* 滑桿 */
@@ -28,7 +28,7 @@
     width:100%;
     height:200%;
     border-radius:1px 1px;
-    background-color:rgb(211, 211, 211);
+    background-color:rgba(111, 55, 185,0.8);
     transform:translateY(-30%);
     top:0px;
     

@@ -1,4 +1,7 @@
-﻿.double_arrow_left{
+﻿/*
+    page control icon (increment control)
+*/
+.double_arrow_left{
     background-image:url("ICON/double_arrow_left.png");
     background-repeat:no-repeat;
     background-position:center;

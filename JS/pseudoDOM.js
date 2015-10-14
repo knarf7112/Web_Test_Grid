@@ -30,6 +30,8 @@ var pseudoDOM = function (name, x, y, width, height, backgroundColor) {
         this.textBaseline = "middle",
         this.textAlign = "left";
     };
+    this.translate_X;
+    this.translate_Y;
     /*
         function
     */
@@ -42,7 +44,10 @@ pseudoDOM.prototype = {
     */
     //pseudo dom name
     name: "",
-    //
+    //畫布位移用的參數
+    translate_X: 0,
+    translate_Y: 0,
+    //位置與大小的數據
     style: {
         //寬度
         width: 0,
@@ -57,7 +62,7 @@ pseudoDOM.prototype = {
         //cursor style
         cursor: "default"
     },
-    //
+    //typeface and size setting
     font: {
         color: "black",
         size: 15,
@@ -74,7 +79,7 @@ pseudoDOM.prototype = {
     //畫矩形(清除後再畫會內縮1px)
     draw_rect: function (ctx) {
         //console.log('draw rectangle:' + this.name);
-        ctx.clearRect(this.style.left, this.style.top, this.style.width, this.style.height);
+        //ctx.clearRect(this.style.left, this.style.top, this.style.width, this.style.height);
         ctx.fillStyle = this.style.backgroundColor;
         ctx.fillRect(this.style.left + 1, this.style.top + 1, this.style.width - 2, this.style.height - 2);
     },
@@ -85,8 +90,12 @@ pseudoDOM.prototype = {
     //刷新矩型內的文字內容(先畫矩形再畫文字內容)
     refresh_textContent:function(ctx, text){
         this.textContent = text || this.textContent;
-        this.save_restore(ctx, this.draw_rect);//重畫矩形
-        this.save_restore(ctx, this.draw_text);//重畫文字內容
+        this.save_restore(ctx, this.clear_rect,this.draw_rect, this.draw_text);//清除矩形並重畫矩形再重畫文字內容
+    },
+    //清除畫布->位移畫布->畫矩形->寫字
+    translate_and_refresh_textContent:function(ctx,text){
+        this.textContent = text || this.textContent;
+        this.save_restore(ctx, this.clear_rect,this.translatePosition,this.draw_rect, this.draw_text);//清除矩形並重畫矩形再重畫文字內容
     },
     //畫文字內容
     draw_text: function (ctx) {
@@ -115,11 +124,30 @@ pseudoDOM.prototype = {
         ctx.textBaseline = this.font.textBaseline;//基準線設定
         ctx.fillText(text, (this.style.left + 5), (this.style.top + (this.style.height / 2)));
     },
-    //隔離畫布狀態並執行操作方法
-    save_restore: function (ctx, func) {
+    //畫布位移
+    translatePosition: function (ctx, trans_x, trans_y) {
+        var x = trans_x || this.translate_X;
+        var y = trans_y || this.translate_Y;
+        if (x !== 0 || y !== 0) {
+            console.log("執行位移", x, y);
+            ctx.translate(x, y);
+        }
+    },
+    //隔離畫布狀態並執行操作方法,操作方法指標依序帶入參數
+    save_restore: function (ctx) {
         ctx.save();//產生新的stack隔離上次的Style設定
-        func.call(this, ctx);//因為再呼叫function時的this指到window了,所以這邊帶入當前的物件
+        for (var i = 1; i < arguments.length; i++) {
+            if (arguments[i].constructor !== Function) {
+                console.log("此參數非函式", arguments[i]);
+                continue;
+            }
+            arguments[i].call(this, ctx);//因為再呼叫function時的this指到window了,所以這邊帶入當前的物件
+        }
         ctx.restore();
+    },
+    set_translate: function(x, y){
+        this.translate_X = x;
+        this.translate_Y = y;
     },
     //設定位置與大小資訊
     set_Style: function (x, y, width, height) {
