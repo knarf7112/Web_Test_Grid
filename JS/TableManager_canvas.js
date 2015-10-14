@@ -1139,14 +1139,15 @@ var TableManager = function (obj) {
         //console.log("deleFunction:this", this, "x", x, "y", y);//預期this要指到tablemanager_canvas物件才對
         var main = this,
             ctx = main.gridElement.getContext("2d");
+        //刷新自定義物件的畫面
         for (var columnIndex = 0; columnIndex < main.refineNodeTable.length; columnIndex++) {
-            for (var rowIndex = 0; rowIndex < main.refineNodeTable[columnIndex].length; rowIndex) {
+            for (var rowIndex = 0; rowIndex < main.refineNodeTable[columnIndex].length; rowIndex++) {
+                //console.log("執行委派任務", x, y);
                 main.refineNodeTable[columnIndex][rowIndex].node.set_translate(x, y);
                 main.refineNodeTable[columnIndex][rowIndex].node.translate_and_refresh_textContent(ctx);
             }
         }
-        //main.refineNodeTable[0][1].node.set_translate(x, y);
-        //main.refineNodeTable[0][1].node.translate_and_refresh_textContent(ctx);
+        
     };
 };
 //shared method

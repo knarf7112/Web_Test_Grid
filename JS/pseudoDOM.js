@@ -166,3 +166,12 @@ pseudoDOM.prototype = {
         this.font.textAlign = textAlign || this.font.textAlign;
     }
 }
+var translate = function(x,y){
+    this.x = x;
+    this.y = y;
+}
+
+translate.prototype.modify = function (x, y) {
+    this.x = x;
+    this.y = y;
+}
