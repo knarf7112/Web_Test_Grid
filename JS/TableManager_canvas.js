@@ -229,7 +229,8 @@ var TableManager = function (obj) {
                 if (!propertyName) {
                     tempObj = main.refineNodeTable[column_Index][rowIndex];
                     tempObj.node.style["backgroundColor"] = tempObj.nodeCSS["backgroundColor"];
-                    tempObj.node.refresh_textContent(ctx);
+                    //tempObj.node.refresh_textContent(ctx);
+                    tempObj.node.translate_and_refresh_textContent(ctx);
                     /*
                     //全部刷新
                     for (var property in main.refineNodeTable[column_Index][rowIndex].nodeCSS) {
@@ -274,7 +275,7 @@ var TableManager = function (obj) {
                     node: currentElement,       //DOM元素
                     nodeCSS: {                  //設定用CSS
                         position: "absolute",
-                        //border: "1px solid yellow", //只是用來看元件位置
+                        border: "1px solid yellow", //只是用來看元件位置
                         backgroundColor: "",
                         width: main.ResizeBarWidth + "px",
                         height: main.height + "px",
@@ -371,7 +372,7 @@ var TableManager = function (obj) {
     //7-1.更新指定與其相關的dispaly物件和flexi bar物件的width值與left值(update specified column width and others left, update specified flexi bar width and others left )
     this._update_nodeCSS_CssStyle = function ( mainObj, columnIndex, x_range, propertyName) {
         var ctx = mainObj.gridElement.getContext("2d");//取得canvas的context
-        var lastResizBar_Left = 0;//
+        var lastResizBar_Left = 0;//最後一根ResizeBar的位置
         for (var index = columnIndex ; index < mainObj.ResizeBarNodeList.length; index++) {
             /**********************************************************/
             //(指定的拖曳軸)預設left + 上次變化量 + 本次變化量 => (指定拖曳軸)本次所需移動的left位置
@@ -388,14 +389,15 @@ var TableManager = function (obj) {
                 更新Grid元件
             */
             //若為拖曳元素的索引値
-            if (index === columnIndex){ 
+            if (index === columnIndex) {
                 //變更目前寬度
                 mainObj.refineNodeTable[index].forEach(function (currentElement, innerIndex, array) {
                     //更新display元素的nodeCSS內指定的屬性值
                     currentElement.nodeCSS['width'] = (mainObj.ResizeBarNodeList[index].forward_width + x_range) + "px";//前一次的寬度値 + 變化量
                     //更新canvas的
                     currentElement.node.style.width = +currentElement.nodeCSS['width'].split("px")[0];//cast to number
-                    currentElement.node.refresh_textContent(ctx);
+                    //currentElement.node.refresh_textContent(ctx);
+                    currentElement.node.translate_and_refresh_textContent(ctx);
                 });
             }
             else {
@@ -404,7 +406,8 @@ var TableManager = function (obj) {
                     //前一個元素的預設值位置 + 之前累積的變化量 + 這次的變化量
                     currentElement.nodeCSS[propertyName] = (mainObj.ResizeBarNodeList[index - 1].default_left + mainObj.ResizeBarNodeList[index-1].X_deviation + x_range) + 'px';//
                     currentElement.node.style.left = +currentElement.nodeCSS[propertyName].split("px")[0];
-                    currentElement.node.refresh_textContent(ctx);
+                    //currentElement.node.refresh_textContent(ctx);
+                    currentElement.node.translate_and_refresh_textContent(ctx);
                 });
             }
             /**********************************************************/
@@ -413,7 +416,7 @@ var TableManager = function (obj) {
             */
             mainObj.columnSortNodeList[index].nodeCSS[propertyName] = resizeBar_Left - 15 + "px";
             mainObj.columnSortNodeList[index].node.style[propertyName] = mainObj.columnSortNodeList[index].nodeCSS[propertyName];
-            //超出Grid範圍
+            //超出Grid範圍就隱藏DOM
             if (resizeBar_Left - 15 > mainObj.width) {
                 mainObj.columnSortNodeList[index].nodeCSS["visibility"] = "hidden";
                 mainObj.columnSortNodeList[index].node.style["visibility"] = mainObj.columnSortNodeList[index].nodeCSS["visibility"];
@@ -434,7 +437,7 @@ var TableManager = function (obj) {
         }
         //console.log('Move refinedNodeList', mainObj.refineNodeTable);
     };
-    //7-2.依據指定索引更新flexi bar指定的間距値並累加指定索引後面的X軸變化量(依據指定的索引變更並累計ResizeBarNodeList陣列內所有的X_deviation)
+    //7-2.依據指定索引更新當前flexi bar與下一個flexi bar的間距値(即寬度)並累加指定索引後面的X軸變化量(依據指定的索引變更並累計ResizeBarNodeList陣列內所有的X_deviation)
     this._update_ResizeBar_last_Xdeviation = function (mainObj, columnIndex, x_range) {
         for (var index = columnIndex ; index < mainObj.ResizeBarNodeList.length; index++) {
             mainObj.ResizeBarNodeList[index].X_deviation += x_range;//累加X axis 變化量
@@ -820,7 +823,8 @@ var TableManager = function (obj) {
                 main.refineNodeTable[columnIndex][rowIndex].value = main.refinedData[pageIndex][main.columnSequence[columnIndex]][rowIndex] || "";
                 //設定psuedoDOM資料
                 main.refineNodeTable[columnIndex][rowIndex].node.textContent = main.refineNodeTable[columnIndex][rowIndex].value;
-                main.refineNodeTable[columnIndex][rowIndex].node.refresh_textContent(ctx);//刷新canvas
+                //main.refineNodeTable[columnIndex][rowIndex].node.refresh_textContent(ctx);//刷新canvas
+                main.refineNodeTable[columnIndex][rowIndex].node.translate_and_refresh_textContent(ctx);
             }
         }
     };
@@ -1134,20 +1138,56 @@ var TableManager = function (obj) {
             that.translate_and_refresh_grid.call(that, x, y);//變更this指向的物件
         }
     };
-    //delegate function point 委派給Slider並利用slider的事件代為執行並回傳translate所需的數據
+    //delegate function point 委派給Slider並利用slider的事件代為執行並回傳translate所需x軸和y軸的變化數據
     this.translate_and_refresh_grid = function (x, y) {
         //console.log("deleFunction:this", this, "x", x, "y", y);//預期this要指到tablemanager_canvas物件才對
         var main = this,
             ctx = main.gridElement.getContext("2d");
-        //刷新自定義物件的畫面
+        main.refineNodeTable[0][0].node.set_translate(x, y);//因所有instance物件都參考prototype的屬性値,所以只需改1次prototype的值(即全部pseudoDOM都會做同樣的位移:[ctx.translate])
+        //刷新Grid元件的畫面
         for (var columnIndex = 0; columnIndex < main.refineNodeTable.length; columnIndex++) {
             for (var rowIndex = 0; rowIndex < main.refineNodeTable[columnIndex].length; rowIndex++) {
                 //console.log("執行委派任務", x, y);
-                main.refineNodeTable[columnIndex][rowIndex].node.set_translate(x, y);
+                //main.refineNodeTable[columnIndex][rowIndex].node.set_translate(x, y);
                 main.refineNodeTable[columnIndex][rowIndex].node.translate_and_refresh_textContent(ctx);
             }
         }
-        
+        //刷新Resize元件位置
+        main._refresh_from_Slider(main, x, 'left');
+        //main._update_ResizeBar_last_Xdeviation(main, ResizeBarIndex, main.ResizeBar_X_rangeList[ResizeBarIndex]);
+    };
+    //依據Slider的x軸變化來刷新畫面(有問題,移動slider會造成x_deviation 增加,下次再移動resizebar的x_deviatino就錯了[會加上slider的移動量*ratio])
+    this._refresh_from_Slider = function (mainObj, x_range, propertyName) {
+        var ctx = mainObj.gridElement.getContext("2d");//取得canvas的context
+        var lastResizBar_Left = 0;//最後一根ResizeBar的位置
+        for (var index = 0 ; index < mainObj.ResizeBarNodeList.length; index++) {
+            /**********************************************************/
+            //(指定的拖曳軸)預設left + 上次變化量 + 本次變化量 => (指定拖曳軸)本次所需移動的left位置
+            var resizeBar_Left = (mainObj.ResizeBarNodeList[index].default_left + mainObj.ResizeBarNodeList[index].X_deviation + x_range);
+            console.log("")
+            /*******更新flexi bar條*******/
+            //更新flexi bar的nodeCSS內指定的屬性值
+            mainObj.ResizeBarNodeList[index].nodeCSS[propertyName] = resizeBar_Left + "px";
+            //更新flexi bar元素的指定CSS style
+            mainObj.ResizeBarNodeList[index].node.style[propertyName] = mainObj.ResizeBarNodeList[index].nodeCSS[propertyName];
+
+            //debugger;
+            /**********************************************************/
+            /*
+                更新排序元件位置
+            */
+            mainObj.columnSortNodeList[index].nodeCSS[propertyName] = resizeBar_Left - 15 + "px";
+            mainObj.columnSortNodeList[index].node.style[propertyName] = mainObj.columnSortNodeList[index].nodeCSS[propertyName];
+            //超出Grid範圍就隱藏DOM
+            if (resizeBar_Left - 15 > mainObj.width || resizeBar_Left < 10) {
+                mainObj.columnSortNodeList[index].nodeCSS["visibility"] = "hidden";
+                mainObj.columnSortNodeList[index].node.style["visibility"] = mainObj.columnSortNodeList[index].nodeCSS["visibility"];
+            }
+            else {
+                mainObj.columnSortNodeList[index].nodeCSS["visibility"] = "visible";
+                mainObj.columnSortNodeList[index].node.style["visibility"] = mainObj.columnSortNodeList[index].nodeCSS["visibility"];
+            }
+        }
     };
 };
 //shared method

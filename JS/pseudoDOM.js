@@ -30,8 +30,8 @@ var pseudoDOM = function (name, x, y, width, height, backgroundColor) {
         this.textBaseline = "middle",
         this.textAlign = "left";
     };
-    this.translate_X;
-    this.translate_Y;
+    //this.translate_X;
+    //this.translate_Y;
     /*
         function
     */
@@ -45,8 +45,8 @@ pseudoDOM.prototype = {
     //pseudo dom name
     name: "",
     //畫布位移用的參數
-    translate_X: 0,
-    translate_Y: 0,
+    translate: new canvas_translate(0, 0),
+    //translate_Y: 0,
     //位置與大小的數據
     style: {
         //寬度
@@ -126,8 +126,8 @@ pseudoDOM.prototype = {
     },
     //畫布位移
     translatePosition: function (ctx, trans_x, trans_y) {
-        var x = trans_x || this.translate_X;
-        var y = trans_y || this.translate_Y;
+        var x = trans_x || this.translate.x;
+        var y = trans_y || this.translate.y;
         if (x !== 0 || y !== 0) {
             console.log("執行位移", x, y);
             ctx.translate(x, y);
@@ -145,9 +145,9 @@ pseudoDOM.prototype = {
         }
         ctx.restore();
     },
+    //設定canvas translate位置的數據
     set_translate: function(x, y){
-        this.translate_X = x;
-        this.translate_Y = y;
+        this.translate.modify(x, y);
     },
     //設定位置與大小資訊
     set_Style: function (x, y, width, height) {
@@ -158,20 +158,24 @@ pseudoDOM.prototype = {
     },
     //設定文字風格
     set_fontStyle: function (color, size, unit, typeface, textBaseline, textAlign) {
-        this.font.color = color || this.font.color;
+        //依據Canvas的font 設定
+        this.font.color = color || this.font.color;//ex:'red', 'rgb(0,0,0)', 'rgba(0,0,0,1)', '#ffffffff'
         this.font.size = +size || this.font.size; //number(自動轉10進位)
-        this.font.unit = unit || this.font.unit;
-        this.font.typeface = typeface || this.font.typeface;
+        this.font.unit = unit || this.font.unit;//文字單位 ex: px, pt, em, %,...
+        this.font.typeface = typeface || this.font.typeface;//字體 ex: 'Cibrili', '標楷體'
         this.font.textBaseline = textBaseline || this.font.textBaseline;
         this.font.textAlign = textAlign || this.font.textAlign;
     }
 }
-var translate = function(x,y){
+//translate當作共用的值(用來全部一起位移)
+//用來設定canvas translate,只改一次,所有instance參考同一個値
+function canvas_translate (x,y){
     this.x = x;
     this.y = y;
 }
-
-translate.prototype.modify = function (x, y) {
-    this.x = x;
-    this.y = y;
+//用來變更所有instance的値
+canvas_translate.prototype.modify = function (x, y) {
+    //console.log("變更translate =>x:" + x + " y:" + y);
+    this.x = +x;
+    this.y = +y;
 }

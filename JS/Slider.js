@@ -107,6 +107,12 @@ var Slider = function (obj) {
                 }
                 //變更slider位置(只刷新DOM元素,未變更物件資料):暫時變更
                 main.refresh_node_CssStyle(main.slider.node, { left: main.currentValue + "px" });
+
+                //依據變化的值被委派執行外部進來的方法(此為一個外部的方法指標)
+                if (!!main.delegateFunctionPoint) {
+                    //console.log("slider X軸變化量:", main.currentValue);
+                    main.delegateFunctionPoint(-(Math.floor(main.currentValue * main.ratio)), 0);//乘上來源的比例後位移畫布並刷新畫面
+                }
             }
         };
         
@@ -125,10 +131,10 @@ var Slider = function (obj) {
                 //變更slider位置(刷新DOM元素,且變更物件資料):永久變更
                 main._refresh_slider_CssStyle({ left: main.currentValue + "px" });
                 //依據變化的值被委派執行外部進來的方法(此為一個外部的方法指標)
-                if (!!main.delegateFunctionPoint) {
-                    console.log("slider X軸變化量:", main.currentValue);
-                    main.delegateFunctionPoint(-main.currentValue, 0);//位移畫布並刷新畫面
-                }
+                //if (!!main.delegateFunctionPoint) {
+                //    console.log("slider X軸變化量:", main.currentValue);
+                //    main.delegateFunctionPoint(-main.currentValue, 0);//位移畫布並刷新畫面
+                //}
             }
         };
     };
@@ -178,7 +184,7 @@ var Slider = function (obj) {
         //recalculate slider width
         newSliderWidth = that.scale(that.min, that.max, that.sliderBar.width);
         //設定比値
-        that.ratio = (that.max / that.sliderBar.width).toFixed(4);
+        that.ratio = +(that.max / that.sliderBar.width).toFixed(4);
         console.log("比値:", that.ratio);
         //設定最大最小的差値
         that.range = that.max - that.min;
@@ -200,7 +206,6 @@ var Slider = function (obj) {
         that.sliderBar.width = that.min;//set slider bar width
         console.log("SliderBar最小値:", that.min);
     };
-    //還需要取得兩邊的差與差跟差之間的倍數,再來是移動多少px算一個Step,一個step要乘上差跟差之間的倍數就是背幕所需要移動的位置
     //比例計算 x:y = a:b => a*y = x*b (x:原來尺寸;y:放大後的尺寸;a:需要依比例縮小的寬度;b:固定不變的寬度;)
     this.scale = function (x, y, b) {
         var a;
