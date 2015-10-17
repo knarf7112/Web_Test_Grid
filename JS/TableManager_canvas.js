@@ -275,7 +275,7 @@ var TableManager = function (obj) {
                     node: currentElement,       //DOM元素
                     nodeCSS: {                  //設定用CSS
                         position: "absolute",
-                        border: "1px solid yellow", //只是用來看元件位置
+                        //border: "1px solid yellow", //只是用來看元件位置
                         backgroundColor: "",
                         width: main.ResizeBarWidth + "px",
                         height: main.height + "px",
@@ -335,7 +335,7 @@ var TableManager = function (obj) {
             if (moveFlag) {
                 main.X_end = e.pageX;//X axis end position
                 //console.log("srcollLeft", document.body.scrollLeft, "main.X_end", main.X_end, "main.X_start", main.X_start);
-                var x_range = (document.body.scrollLeft + main.gridElement.scrollLeft + main.X_end - main.X_start);//取得間距
+                var x_range = (document.body.scrollLeft + main.gridElement.scrollLeft + main.X_end - main.X_start);//  - (main.slider.currentValue * main.slider.ratio));//取得間距
                 //設定最小間距
                 if (main.ResizeBarNodeList[ResizeBarIndex].forward_width + x_range < 30) {
                     x_range = 30 - main.ResizeBarNodeList[ResizeBarIndex].forward_width;
@@ -376,13 +376,24 @@ var TableManager = function (obj) {
         for (var index = columnIndex ; index < mainObj.ResizeBarNodeList.length; index++) {
             /**********************************************************/
             //(指定的拖曳軸)預設left + 上次變化量 + 本次變化量 => (指定拖曳軸)本次所需移動的left位置
-            var resizeBar_Left = (mainObj.ResizeBarNodeList[index].default_left + mainObj.ResizeBarNodeList[index].X_deviation + x_range );
-            /*******更新flexi bar條*******/
+            var resizeBar_Left = (mainObj.ResizeBarNodeList[index].default_left + mainObj.ResizeBarNodeList[index].X_deviation + x_range - (mainObj.slider.currentValue * mainObj.slider.ratio));//要減掉slider拖移時產生的位移差
+            /**********************************************************/
+            /*
+                更新Resize bar條
+            */
             //更新flexi bar的nodeCSS內指定的屬性值
             mainObj.ResizeBarNodeList[index].nodeCSS[propertyName] = resizeBar_Left + "px";
             //更新flexi bar元素的指定CSS style
             mainObj.ResizeBarNodeList[index].node.style[propertyName] = mainObj.ResizeBarNodeList[index].nodeCSS[propertyName];
-            
+            //超出Grid範圍就隱藏DOM
+            if (resizeBar_Left - 15 > mainObj.width || resizeBar_Left < 0) {
+                mainObj.ResizeBarNodeList[index].nodeCSS["visibility"] = "hidden";
+                mainObj.ResizeBarNodeList[index].node.style["visibility"] = mainObj.ResizeBarNodeList[index].nodeCSS["visibility"];
+            }
+            else {
+                mainObj.ResizeBarNodeList[index].nodeCSS["visibility"] = "visible";
+                mainObj.ResizeBarNodeList[index].node.style["visibility"] = mainObj.ResizeBarNodeList[index].nodeCSS["visibility"];
+            }
             //debugger;
             /**********************************************************/
             /*
@@ -912,7 +923,8 @@ var TableManager = function (obj) {
             tmpNodes;
         //create column sort elements
         main.columnSortedRootNode = main.new.create('div', main.column, 'triangle_up');
-
+        main.columnSortedRootNode.classList.remove("triangle_up");
+        main.columnSortedRootNode.setAttribute("id", "sortList");
         tmpNodes = Array.prototype.slice.call(main.columnSortedRootNode.children);//
 
         //set property into main object //iterator

@@ -15,11 +15,11 @@ var Slider = function (obj) {
     //最小值
     this.min;
     //當前値
-    this.currentValue;
+    this.currentValue = 0;
     //最大値-最小値
-    this.range;
+    this.range = 0;
     //幕與bar條的單位比値
-    this.ratio;
+    this.ratio = 0;
     //幕的出書
     this.outputRange = { start: 0, end: 0 };
     //滑鼠起訖位置pageX
@@ -115,14 +115,14 @@ var Slider = function (obj) {
                 }
             }
         };
-        
+        /*
         main.slider.node.onmouseleave = function (e) {
             if (sliderFlag) {
                 //console.log("因超出slider元素範圍,所以代為執行mouseup事件");
                 document.body.onmouseup(e);
             }
         };
-        
+        */
         document.body.onmouseup = function (e) {
             if (sliderFlag) {
                 sliderFlag = false;
