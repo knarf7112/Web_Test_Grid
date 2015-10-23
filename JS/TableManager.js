@@ -155,8 +155,8 @@ var TableManager = function (obj) {
             if (!container[data.column]) {
                 container.push([]);
             }
-            //直接指定
-            container[data.column][data.row] = data;
+            //自訂物件推入array
+            container[data.column].push(data);
         }
         console.log('refine result',container);
         //結果輸出
