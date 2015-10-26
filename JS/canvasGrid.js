@@ -67,11 +67,11 @@ var Grid = function (obj) {
         //2.重新定義元素結構
         this.redefineGridNodesStruct();
         //2-1.設定欄位順序陣列
-        //this.set_columnSequenceArray();
+        this.set_columnSequenceArray();
         //3.設定主grid元素外框CSS style
         //this.set_gridRootNodeStyle();
         //4.刷新Grid的所有元素style
-        //this.refresh_allDisplayElementCssStyle();
+        this.refresh_allDisplayElementCssStyle();
         //5.建立flexi bar
         //this.createResizeBar();
         //6.refresh flexi bar css style 
@@ -118,47 +118,55 @@ var Grid = function (obj) {
         const innerContainer = [];
         const len = main.column * main.row;     //total cells 
         const averageWidth = main.columnWidth;
-
+        var isHeader;
+        var type;
+        var attributes;
+        var rowIndex;
+        var columnIndex;
+        var default_Left;
+        var nodeCss;
+        var node;
+        var dataContainer;
         //set every column width and height(設定欄位平均寬度和厚度)
         main.columnWidth = (main.width / main.column);
         main.rowHeight = (main.height / main.row);
 
         for (var elementIndex = 0; elementIndex < len; elementIndex++) {
-            const isHeader = (elementIndex % main.row === 0);
-            const type = isHeader ? "header" : "cell";
-            const attribute = isHeader ? { draggable: true } : {};
-            const rowIndex = (elementIndex % main.row);
-            const columnIndex = Math.floor(elementIndex / this.row);
-            const default_Left = (columnIndex * main.columnWidth);
-            const nodeCss = {                                    //CSS Style 
+            isHeader = (elementIndex % main.row === 0);
+            type = isHeader ? "header" : "cell";
+            attributes = isHeader ? { draggable: true } : {};
+            rowIndex = (elementIndex % main.row);
+            columnIndex = Math.floor(elementIndex / this.row);
+            default_Left = (columnIndex * main.columnWidth);
+            nodeCss = {                                    //CSS Style 
                 position: "absolute",
-                width: (main.columnWidth) ,//+ "px",
-                height: (main.rowHeight) ,//+ "px",
-                top: (rowIndex * main.rowHeight) ,//+ "px",//因以欄位為基準,所以剛好相反
-                left: (columnIndex * main.columnWidth) ,//+ "px",
+                width: (main.columnWidth),//+ "px",
+                height: (main.rowHeight),//+ "px",
+                top: (rowIndex * main.rowHeight),//+ "px",//因以欄位為基準,所以剛好相反
+                left: (columnIndex * main.columnWidth),//+ "px",
                 border: 2,//"2px solid white",
                 textAlign: "center",
                 backgroundColor: isHeader ? "rgb(120, 207, 207)" : "rgb(174, 233, 233)",
                 overflow: "hidden"
             };
-            const node = new Cell_canvas(
+            node = new Cell_canvas(
                 columnIndex + "-" + rowIndex,   //name
-                nodeCss.top,                    //x axis
-                nodeCss.left,                   //y axis
+                nodeCss.left,                   //x axis 列導向所以相反
+                nodeCss.top,                    //y axis
                 nodeCss.width,                  //width
                 nodeCss.height,                 //height
                 nodeCss.backgroundColor,        //backgound color
                 nodeCss.border);                //border width
             //defined data content(自訂的資料物件)
-            const data = new CellContainer(type, rowIndex, columnIndex, averageWidth, default_Left, null, node);
+            dataContainer = new CellContainer(type, rowIndex, columnIndex, averageWidth, default_Left, null, node);
 
             //[[{}]] => column( row( data Object ) )
             //若不存在建立新的陣列容器
-            if (!container[data.column]) {
+            if (!container[dataContainer.column]) {
                 container.push([]);
             }
             //自訂物件推入array
-            container[data.column].push(data);
+            container[dataContainer.column].push(dataContainer);
         }
         console.log('refine result', container);
         //結果輸出
@@ -172,6 +180,7 @@ var Grid = function (obj) {
         });
 
     };
+    /*
     //3.設定主grid元素外框CSS style
     this.set_gridRootNodeStyle = function () {
         var main = this;
@@ -182,24 +191,21 @@ var Grid = function (obj) {
         main.gridElement.style.overflowY = "hidden";
         main.gridElement.style.overflowX = "visable";//
     };
+    */
     //4.刷新Grid內所有display元素的CSS Style屬性或指定的CSS屬性
     this.refresh_allDisplayElementCssStyle = function (mainObj, columnIndex, propertyName) {
-        var main = mainObj || this;
+        const main = mainObj || this;
+        const ctx = main.gridElement.getContext('2d');
+
         //object css set into element css style 刷新所有展
         for (var column_Index = columnIndex || 0; column_Index < main.column; column_Index++) {
             for (var rowIndex = 0; rowIndex < main.row; rowIndex++) {
                 //若無指定CSS屬性名稱
                 if (!propertyName) {
-                    //全部刷新
-                    for (var property in main.refineNodeTable[column_Index][rowIndex].nodeCSS) {
-                        main.refineNodeTable[column_Index][rowIndex].node.style[property] = main.refineNodeTable[column_Index][rowIndex].nodeCSS[property];
-                    }
-                    //若為header 設定可拖曳屬性
-                    if (main.refineNodeTable[column_Index][rowIndex].type === "header") {
-                        for (var attribute in main.refineNodeTable[column_Index][rowIndex].nodeAttributes) {
-                            main.refineNodeTable[column_Index][rowIndex].node.setAttribute(attribute, main.refineNodeTable[column_Index][rowIndex].nodeAttributes[attribute]);
-                        }
-                    }
+                    tempObj = main.refineNodeTable[column_Index][rowIndex];
+                    //tempObj.node.style["backgroundColor"] = tempObj.nodeCSS["backgroundColor"];
+                    //tempObj.node.refresh_textContent(ctx);
+                    tempObj.node.translate_and_refresh_textContent(ctx);
                 }
                 else {
                     //指定刷新
@@ -1135,6 +1141,8 @@ Cell_canvas.prototype = {
         left: 0,
         //Y axis
         top: 0,
+        //border width
+        border: 0,
         //background color
         backgroundColor: "yellow",
         //cursor style
@@ -1159,7 +1167,7 @@ Cell_canvas.prototype = {
         //console.log('draw rectangle:' + this.name);
         //ctx.clearRect(this.style.left, this.style.top, this.style.width, this.style.height);
         ctx.fillStyle = this.style.backgroundColor;
-        ctx.fillRect(this.style.left + 1, this.style.top + 1, this.style.width - 2, this.style.height - 2);
+        ctx.fillRect(this.style.left + this.style.border, this.style.top + this.style.border, this.style.width - (this.style.border * 2), this.style.height - (this.style.border * 2));
     },
     //清除矩形
     clear_rect: function (ctx) {
