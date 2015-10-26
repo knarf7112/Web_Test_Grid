@@ -106,7 +106,9 @@ var Grid = function (obj) {
     //1.建立展示資料元素
     this.createDisplayNode = function () {
         //建立展示資料元素
-        this.gridElement = this.new.createElement('canvas', 'grid');
+        this.gridElement = this.shared.createElement('canvas', 'grid');
+        this.gridElement.setAttribute('width', this.width);
+        this.gridElement.setAttribute('height', this.height);
         this.mainElement.appendChild(this.gridElement);
     };
     //2.設定自定義的node結構
@@ -114,31 +116,39 @@ var Grid = function (obj) {
         const main = this;
         const container = [];
         const innerContainer = [];
-        const allChilds = main.column * main.row;
+        const len = main.column * main.row;     //total cells 
         const averageWidth = main.columnWidth;
+
         //set every column width and height(設定欄位平均寬度和厚度)
         main.columnWidth = (main.width / main.column);
         main.rowHeight = (main.height / main.row);
 
-        for (var elementIndex = 0; elementIndex < allChilds.length; elementIndex++) {
+        for (var elementIndex = 0; elementIndex < len; elementIndex++) {
             const isHeader = (elementIndex % main.row === 0);
             const type = isHeader ? "header" : "cell";
-            const attribute = isHeader ? {draggable:true}:undefined;
+            const attribute = isHeader ? { draggable: true } : {};
             const rowIndex = (elementIndex % main.row);
             const columnIndex = Math.floor(elementIndex / this.row);
             const default_Left = (columnIndex * main.columnWidth);
             const nodeCss = {                                    //CSS Style 
                 position: "absolute",
-                width: (main.columnWidth) + "px",
-                height: (main.rowHeight) + "px",
-                top: (rowIndex * main.rowHeight) + "px",//因以欄位為基準,所以剛好相反
-                left: (columnIndex * main.columnWidth) + "px",
-                border: "2px solid white",
+                width: (main.columnWidth) ,//+ "px",
+                height: (main.rowHeight) ,//+ "px",
+                top: (rowIndex * main.rowHeight) ,//+ "px",//因以欄位為基準,所以剛好相反
+                left: (columnIndex * main.columnWidth) ,//+ "px",
+                border: 2,//"2px solid white",
                 textAlign: "center",
                 backgroundColor: isHeader ? "rgb(120, 207, 207)" : "rgb(174, 233, 233)",
                 overflow: "hidden"
             };
-            const node = new Cell_canvas()
+            const node = new Cell_canvas(
+                columnIndex + "-" + rowIndex,   //name
+                nodeCss.top,                    //x axis
+                nodeCss.left,                   //y axis
+                nodeCss.width,                  //width
+                nodeCss.height,                 //height
+                nodeCss.backgroundColor,        //backgound color
+                nodeCss.border);                //border width
             //defined data content(自訂的資料物件)
             const data = new CellContainer(type, rowIndex, columnIndex, averageWidth, default_Left, null, node);
 
@@ -1026,7 +1036,7 @@ var Grid = function (obj) {
 }
 
 //
-Grid.prototype = {
+Grid.prototype.shared = {
     //建立DOM元素並設定class Name
     createElement:function(tagName, className){
         const element = document.createElement(tagName);
@@ -1060,21 +1070,19 @@ function CellContainer(type,rowIndex,columnIndex,default_Width,default_Left,node
     this.column = columnIndex;          //column導向            //(elementIndex % this.column),//列導向
     this.default_Width =  default_Width;//預設寬度:平均值
     this.default_Left = default_Left;   //預設X軸位置:固定寬度的間距
-    this.nodeCSS = nodeCssObj;
-    this.node = node;
+    this.nodeCSS = nodeCssObj;          //
+    this.node = node;                   //
     this.nodeAttributes = nodeAttrObj;
     this.value = value;
-
 }
 //DOTO ... 要繼承Cell_canvas的屬性(即把兩個物件綁在一起:base是Cell_canvas)  
-CellContainer.prototype = {
+//CellContainer.prototype.cell = Object.create(Cell_canvas.prototype);
 
-}
 
 //模擬DOM紀錄DOM相關屬性値
 function Cell_canvas (name, x, y, width, height, backgroundColor, border) {
-    if (arguments.length !== 5) {
-        throw new Error("parameter must have 5");
+    if (arguments.length !== arguments.callee.length) {
+        throw new Error("parameter must have " + arguments.callee.length);
     }
     this.name = name || "";
     //CSS Style
@@ -1102,8 +1110,6 @@ function Cell_canvas (name, x, y, width, height, backgroundColor, border) {
         this.textBaseline = "middle",
         this.textAlign = "left";
     };
-    //this.translate_X;
-    //this.translate_Y;
     /*
         function
     */
@@ -1244,10 +1250,10 @@ Cell_canvas.prototype = {
 function canvas_translate(x, y) {
     this.x = x;
     this.y = y;
-}
+};
 //用來變更所有instance的値
 canvas_translate.prototype.modify = function (x, y) {
     //console.log("變更translate =>x:" + x + " y:" + y);
     this.x = +x;
     this.y = +y;
-}
+};
