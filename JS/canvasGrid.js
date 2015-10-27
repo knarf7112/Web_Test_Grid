@@ -114,8 +114,8 @@ var Grid = function (obj) {
     //2.設定自定義的node結構
     this.redefineGridNodesStruct = function () {
         const main = this;
-        const container = [];
-        const innerContainer = [];
+        const container = [];                   //頁
+        //const innerContainer = [];              //欄 used es6 array copy [...innerContainer]
         const len = main.column * main.row;     //total cells 
         const averageWidth = main.columnWidth;
         var isHeader;
@@ -163,6 +163,7 @@ var Grid = function (obj) {
             //[[{}]] => column( row( data Object ) )
             //若不存在建立新的陣列容器
             if (!container[dataContainer.column]) {
+                //container.push([...innerContainer]);//es6 array copy not support on vs2013 but browser is support
                 container.push([]);
             }
             //自訂物件推入array
@@ -1080,9 +1081,29 @@ function CellContainer(type,rowIndex,columnIndex,default_Width,default_Left,node
     this.node = node;                   //
     this.nodeAttributes = nodeAttrObj;
     this.value = value;
+    this.isSelected = false;
+    this.deleFunc = [];
 }
 //DOTO ... 要繼承Cell_canvas的屬性(即把兩個物件綁在一起:base是Cell_canvas)  
-//CellContainer.prototype.cell = Object.create(Cell_canvas.prototype);
+CellContainer.prototype = {
+    isMe: function (x, y) {
+        const that = this;
+        if (!that.isSelected && that.checkRange(x,y)) {
+            that.isSelected = true;
+            console.log(that.node.name);
+            that.deleFunc.forEach(function (current,index,array){
+                current.apply(null,x,y);
+            });
+        }
+        else {
+            that.isSelected = false;
+
+        }
+    },
+    checkRange: function (x, y) {
+        //if(x > )
+    }
+};
 
 
 //模擬DOM紀錄DOM相關屬性値
