@@ -220,15 +220,9 @@ var Grid = function (obj) {
     */
     //5.create flexi bar and initial property (flexi bar:控制Grid上每個欄位的寬度與位置)
     this.createResizeBar = function () {
-        var main = this,
-            tmpNodes;
-        //建立 flexi bar 元素
-        main.ResizeBarRootNode = main.new.create('div', main.ResizeBarCount, 'ResizeBar');
-        //casting to array
-        tmpNodes = Array.prototype.slice.call(main.ResizeBarRootNode.children);//轉成陣列元素
-
-        //set property into main object //iterator
-        tmpNodes.forEach(function (currentElement, index, array) {
+        const main = this;
+        //create resize object
+        for (var index = 0; index < main.column; index++) {
             var default_left = ((main.columnWidth * (index + 1)));// - main.ResizeBarWidth),//每個flexi bar的預設 X axis 位置
             //建立縮放元素(flexi bar)的資料結構
             data = {
@@ -236,7 +230,7 @@ var Grid = function (obj) {
                 default_left: default_left, //初始位置
                 X_deviation: 0,//滑鼠事件的移動變化值(原始值的遞增或遞減)
                 forward_width: default_left - ((!!main.ResizeBarNodeList[index - 1]) ? main.ResizeBarNodeList[index - 1].default_left : 0),//與前一個元素的間距寬度
-                node: currentElement,       //DOM元素
+                node: new Cell_canvas('ResizeBar' + index,default_left,0,main.ResizeBarWidth,main.height),       //DOM元素
                 nodeCSS: {                  //設定用CSS
                     position: "absolute",
                     //border: "1px solid yellow", //只是用來看元件位置
@@ -250,10 +244,10 @@ var Grid = function (obj) {
             };
             //console.log(currentElement);
             main.ResizeBarNodeList.push(data);//加入主物件
-        });
+        };
         //console.log('init flexi bar', main.ResizeBarNodeList.map(function (current, index, array) { return current.forward_width; }))
-        //輸出到Grid元素上
-        main.gridElement.appendChild(main.ResizeBarRootNode);
+        //TODO ... 需加入委派的方法 1.要改sort位置 2.要改每個display的cell的位置和寬度 3.要改slider bar的寬度
+        
     };
     //6.refresh flexi bar css style 
     this.refresh_ResizeBarCssStyle = function (mainObj, columnIndex, propertyName) {
@@ -1052,7 +1046,8 @@ Grid.prototype.shared = {
         };
         return element;
     },
-    createCell: function () {
+    createRect: function (x,y,width,height) {
+        const rect = {};
 
 
     }
@@ -1104,8 +1099,67 @@ CellContainer.prototype = {
         //if(x > )
     }
 };
+//triangle Obj
+function triangle(name, points) {
+    if (arguments.length !== arguments.callee.length) {
+        throw new Error("parameter must have " + arguments.callee.length);
+    }
+    this.name = name || "";
+    // 3 points position
+    this.x1 = points.x1;
+    this.y1 = points.y1;
+    this.x2 = points.x2;
+    this.y2 = points.y2;
+    this.x3 = points.x3;
+    this.y3 = points.y3;
+    //背景顏色
+    this.backgroundColor = backgroundColor || "#bbb";
 
+    //鼠標符號
+    this.cursor = "default";
+    //文字內容
+    this.textContent = "這是測試超過長度是否切除,超過長度的會被切掉";//"teste國234567890";
+    //default font style
+    this.font = new function () {
+        this.color = "black",
+        this.size = 16,
+        this.unit = "px",
+        this.typeface = "Calibri",
+        this.textBaseline = "middle",
+        this.textAlign = "left";
+    };
+};
+triangle.prototype = {
+    //check position if click this object
+    isMe: function (x, y) {
+        const that = this;
+        //公式
+        const a = that.style.x1 * (that.style.y2 - that.style.y3) + that.style.x2 * (that.style.y3 - that.style.y1) + that.style.x3 * (that.style.y1 - that.style.y2);
+        const b = that.style.x1 * (y - that.style.y3) + x * (that.style.y3 - that.style.y1) + that.style.x3 * (that.style.y1 - y);
+        const c = that.style.x1 * (that.style.y2 - y) + that.style.x2 * (y - that.style.y1) + x * (that.style.y1 - that.style.y2);
+        //條件
+        if (((b + c) / a) < 1 && (b / a) > 0 && (c / a) > 0) {
+            return true;
+        }
+        else {
+            console.log('沒點到', a, b, c);
+        }
+    },
+    //draw triangle 
+    draw: function (ctx) {
+        const that = this;
+        ctx.fillStyle = that.backgroundColor;
+        ctx.beginPath();
+        ctx.moveTo(that.x1, that.y1);
+        ctx.lineTo(that.x2, that.y2);
+        ctx.lineTo(that.x3, that.y3);
+        ctx.closePath();
+        ctx.fill();
+    }
+}
+function rectangle(name,info) {
 
+}
 //模擬DOM紀錄DOM相關屬性値
 function Cell_canvas (name, x, y, width, height, backgroundColor, border) {
     if (arguments.length !== arguments.callee.length) {
@@ -1207,29 +1261,30 @@ Cell_canvas.prototype = {
     //畫文字內容
     draw_text: function (ctx) {
         //console.log("draw text:" + this.name);
+        const that = this;
         var text = "";
-        ctx.fillStyle = this.font.color;
-        ctx.font = "" + this.font.size + this.font.unit + " " + this.font.typeface;//(字串)大小 + 單位 + 字體
+        ctx.fillStyle = that.font.color;
+        ctx.font = "" + that.font.size + that.font.unit + " " + that.font.typeface;//(字串)大小 + 單位 + 字體
         //檢查字串長度是否超出矩形寬度
-        var String_Width = ctx.measureText(this.textContent).width;//Calculate string width
+        var String_Width = ctx.measureText(that.textContent).width;//Calculate string width
         //console.log("str:", String_Width, "width:", this.style.width);
-        if (String_Width > this.style.width) {
-            var minus = this.textContent.length;//origin length
+        if (String_Width > that.style.width) {
+            var minus = that.textContent.length;//origin length
             var cutStr = "";//string temp
             //一直遞減一個字元,直到字串寬度小於矩形寬度
-            while (String_Width >= this.style.width) {
+            while (String_Width >= that.style.width) {
                 minus--;//減少一個字元長度
-                cutStr = this.textContent.slice(0, minus);//取得減少後的字串
+                cutStr = that.textContent.slice(0, minus);//取得減少後的字串
                 String_Width = ctx.measureText(cutStr).width;//計算字串寬度(會依據font的size來算)
             }
             text = cutStr;
         }
         else {
-            text = this.textContent;
+            text = that.textContent;
         }
-        ctx.textAlign = this.font.textAlign;//對齊左右
-        ctx.textBaseline = this.font.textBaseline;//基準線設定
-        ctx.fillText(text, (this.style.left + 5), (this.style.top + (this.style.height / 2)));
+        ctx.textAlign = that.font.textAlign;//對齊左右
+        ctx.textBaseline = that.font.textBaseline;//基準線設定
+        ctx.fillText(text, (that.style.left + 5), (that.style.top + (that.style.height / 2)));
     },
     //畫布位移
     translatePosition: function (ctx, trans_x, trans_y) {
