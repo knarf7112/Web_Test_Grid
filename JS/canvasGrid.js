@@ -68,9 +68,7 @@ var Grid = function (obj) {
         this.redefineGridNodesStruct();
         //2-1.設定欄位順序陣列
         this.set_columnSequenceArray();
-        //3.設定主grid元素外框CSS style
-        //this.set_gridRootNodeStyle();
-        //4.刷新Grid的所有元素style
+        //3.刷新Grid的dispaly cell物件
         this.refresh_allDisplayElementCssStyle();
         //5.建立flexi bar
         //this.createResizeBar();
@@ -181,56 +179,40 @@ var Grid = function (obj) {
         });
 
     };
-    /*
-    //3.設定主grid元素外框CSS style
-    this.set_gridRootNodeStyle = function () {
-        var main = this;
-        main.gridElement.style.position = "relative";
-        //main.gridElement.style.border = "1px solid red";
-        main.gridElement.style.width = main.width + main.GridExtraWidth + "px";//加上擴展的寬度(使最右邊的flexi bar可以向右拖曳不卡住)
-        main.gridElement.style.height = main.height + 10 + "px";
-        main.gridElement.style.overflowY = "hidden";
-        main.gridElement.style.overflowX = "visable";//
-    };
-    */
-    //4.刷新Grid內所有display元素的CSS Style屬性或指定的CSS屬性
-    this.refresh_allDisplayElementCssStyle = function (mainObj, columnIndex, propertyName) {
+    //3.刷新Grid內所有display shape
+    this.refresh_allDisplayElementCssStyle = function (mainObj, columnIndex) {
         const main = mainObj || this;
         const ctx = main.gridElement.getContext('2d');
 
-        //object css set into element css style 刷新所有展
+        //refresh all display cell object
         for (var column_Index = columnIndex || 0; column_Index < main.column; column_Index++) {
             for (var rowIndex = 0; rowIndex < main.row; rowIndex++) {
-                //若無指定CSS屬性名稱
-                if (!propertyName) {
-                    tempObj = main.refineNodeTable[column_Index][rowIndex];
-                    //tempObj.node.style["backgroundColor"] = tempObj.nodeCSS["backgroundColor"];
-                    //tempObj.node.refresh_textContent(ctx);
-                    tempObj.node.translate_and_refresh_textContent(ctx);
-                }
-                else {
-                    //指定刷新
-                    main.refineNodeTable[column_Index][rowIndex].node.style[propertyName] = main.refineNodeTable[column_Index][rowIndex].nodeCSS[propertyName];
-                }
+                //get object point
+                tempObj = main.refineNodeTable[column_Index][rowIndex];
+                //draw this object
+                tempObj.node.translate_and_refresh_textContent(ctx);
             }
         }
     };
     /*
         欄位縮放元件
     */
-    //5.create flexi bar and initial property (flexi bar:控制Grid上每個欄位的寬度與位置)
+    //4.create flexi bar and initial property (flexi bar:控制Grid上每個欄位的寬度與位置)
     this.createResizeBar = function () {
         const main = this;
+        var data;
+        var settings;
         //create resize object
         for (var index = 0; index < main.column; index++) {
             var default_left = ((main.columnWidth * (index + 1)));// - main.ResizeBarWidth),//每個flexi bar的預設 X axis 位置
-            //建立縮放元素(flexi bar)的資料結構
+            //建立縮放物件(flexi bar)的資料結構
+            /*
             data = {
                 index: index,               //第幾條
                 default_left: default_left, //初始位置
                 X_deviation: 0,//滑鼠事件的移動變化值(原始值的遞增或遞減)
                 forward_width: default_left - ((!!main.ResizeBarNodeList[index - 1]) ? main.ResizeBarNodeList[index - 1].default_left : 0),//與前一個元素的間距寬度
-                node: new Cell_canvas('ResizeBar' + index,default_left,0,main.ResizeBarWidth,main.height),       //DOM元素
+                node: new Cell_canvas('ResizeBar' + index,default_left,0,main.ResizeBarWidth,main.height),       //自訂數據物件元素
                 nodeCSS: {                  //設定用CSS
                     position: "absolute",
                     //border: "1px solid yellow", //只是用來看元件位置
@@ -242,6 +224,14 @@ var Grid = function (obj) {
                 },
                 type: "ResizeBar"            //物件種類
             };
+            */
+            settings = {
+                x:default_left,
+                y:0,
+                width:main.ResizeBarWidth,
+                height:main.height
+            };
+            data = new Rectangle("ResizeBar" + index, settings);
             //console.log(currentElement);
             main.ResizeBarNodeList.push(data);//加入主物件
         };
@@ -1039,19 +1029,19 @@ var Grid = function (obj) {
 //
 Grid.prototype.shared = {
     //建立DOM元素並設定class Name
-    createElement:function(tagName, className){
+    createElement: function (tagName, className) {
         const element = document.createElement(tagName);
         if (!!className) {
             element.classList.add(className);
         };
         return element;
     },
-    createRect: function (x,y,width,height) {
+    createRect: function (x, y, width, height) {
         const rect = {};
 
 
     }
-}
+};
 
 /*
  *  Grid的單位物件
@@ -1066,11 +1056,11 @@ Grid.prototype.shared = {
  *  @param {Object} nodeAttrObj
  *  @param {String} value
  */
-function CellContainer(type,rowIndex,columnIndex,default_Width,default_Left,nodeCssObj,node,nodeAttrObj,value) {
+function CellContainer(type, rowIndex, columnIndex, default_Width, default_Left, nodeCssObj, node, nodeAttrObj, value) {
     this.type = type;                   ////column導向       //(Math.floor(elementIndex / this.column) == 0) ? "header" : "body"//row導向
     this.row = rowIndex;                //column導向                    //Math.floor(elementIndex / this.column),  //row導向
     this.column = columnIndex;          //column導向            //(elementIndex % this.column),//列導向
-    this.default_Width =  default_Width;//預設寬度:平均值
+    this.default_Width = default_Width;//預設寬度:平均值
     this.default_Left = default_Left;   //預設X軸位置:固定寬度的間距
     this.nodeCSS = nodeCssObj;          //
     this.node = node;                   //
@@ -1078,65 +1068,120 @@ function CellContainer(type,rowIndex,columnIndex,default_Width,default_Left,node
     this.value = value;
     this.isSelected = false;
     this.deleFunc = [];
-}
-//DOTO ... 要繼承Cell_canvas的屬性(即把兩個物件綁在一起:base是Cell_canvas)  
-CellContainer.prototype = {
-    isMe: function (x, y) {
+};
+
+//triangle
+function Triangle(name, settings, backgroundColor) {
+    this.name = name;
+    this.settings = {
+        x1: settings.x1,
+        y1: settings.y1,
+        x2: settings.x2,
+        y2: settings.y2,
+        x3: settings.x3,
+        y3: settings.y3
+    };
+    this.tempSettings = {
+        x1: 0,
+        y1: 0,
+        x2: 0,
+        y2: 0,
+        x3: 0,
+        y3: 0
+    };
+    this.backgroundColor = backgroundColor;
+    this.type = "triangle";
+};
+Triangle.prototype = {
+    //變更位置
+    setPosition: function (x, y, forever) {
         const that = this;
-        if (!that.isSelected && that.checkRange(x,y)) {
-            that.isSelected = true;
-            console.log(that.node.name);
-            that.deleFunc.forEach(function (current,index,array){
-                current.apply(null,x,y);
-            });
+        //非永有改變
+        if (!forever) {
+            that.tempSettings.x1 = x;
+            that.tempSettings.x2 = x;
+            that.tempSettings.x3 = x;
+            that.tempSettings.y1 = y;
+            that.tempSettings.y2 = y;
+            that.tempSettings.y3 = y;
         }
         else {
-            that.isSelected = false;
-
+            that.settings.x1 += x;
+            that.settings.x2 += x;
+            that.settings.x3 += x;
+            that.settings.y1 += y;
+            that.settings.y2 += y;
+            that.settings.y3 += y;
+            that.tempSettings.x1 = 0;
+            that.tempSettings.x2 = 0;
+            that.tempSettings.x3 = 0;
+            that.tempSettings.y1 = 0;
+            that.tempSettings.y2 = 0;
+            that.tempSettings.y3 = 0;
         }
     },
-    checkRange: function (x, y) {
-        //if(x > )
-    }
-};
-//triangle Obj
-function triangle(name, points) {
-    if (arguments.length !== arguments.callee.length) {
-        throw new Error("parameter must have " + arguments.callee.length);
-    }
-    this.name = name || "";
-    // 3 points position
-    this.x1 = points.x1;
-    this.y1 = points.y1;
-    this.x2 = points.x2;
-    this.y2 = points.y2;
-    this.x3 = points.x3;
-    this.y3 = points.y3;
-    //背景顏色
-    this.backgroundColor = backgroundColor || "#bbb";
+    //變更大小
+    setSize: function (x, y, forever) {
 
-    //鼠標符號
-    this.cursor = "default";
-    //文字內容
-    this.textContent = "這是測試超過長度是否切除,超過長度的會被切掉";//"teste國234567890";
-    //default font style
-    this.font = new function () {
-        this.color = "black",
-        this.size = 16,
-        this.unit = "px",
-        this.typeface = "Calibri",
-        this.textBaseline = "middle",
-        this.textAlign = "left";
-    };
-};
-triangle.prototype = {
-    //check position if click this object
-    isMe: function (x, y) {
+    },
+    //清除三角  TODO ... 有殘餘的邊
+    clear: function (ctx, color) {
+        const that = this;
+        that.draw(ctx, color);
+    },
+    //畫圖
+    draw: function (ctx, color) {
+        const that = this;
+        ctx.save();
+        ctx.fillStyle = color || that.color;
+        ctx.beginPath();
+        ctx.moveTo((that.settings.x1 +
+                    that.tempSettings.x1),
+                   (that.settings.y1 +
+                    that.tempSettings.y1));
+        ctx.lineTo((that.settings.x2 +
+                   that.tempSettings.x2),
+                   (that.settings.y2 +
+                   that.tempSettings.y2));
+        ctx.lineTo((that.settings.x3 +
+                   that.tempSettings.x3),
+                   (that.settings.y3 +
+                   that.tempSettings.y1));
+        //ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+    },
+    //檢查是否在物件的範圍內
+    hitCheck: function (x, y) {
         const that = this;
         //公式
-        const a = that.style.x1 * (that.style.y2 - that.style.y3) + that.style.x2 * (that.style.y3 - that.style.y1) + that.style.x3 * (that.style.y1 - that.style.y2);
-        const b = that.style.x1 * (y - that.style.y3) + x * (that.style.y3 - that.style.y1) + that.style.x3 * (that.style.y1 - y);
-        const c = that.style.x1 * (that.style.y2 - y) + that.style.x2 * (y - that.style.y1) + x * (that.style.y1 - that.style.y2);
+        var a = (that.settings.x1 + that.tempSettings.x1) *
+            ((that.settings.y2 + that.tempSettings.y2) -
+             (that.settings.y3 + that.tempSettings.y3)) +
+            (that.settings.x2 + that.tempSettings.x2) *
+            ((that.settings.y3 + that.tempSettings.y3) -
+             (that.settings.y1 + that.tempSettings.y1)) +
+            (that.settings.x3 + that.tempSettings.x3) *
+            ((that.settings.y1 + that.tempSettings.y1) -
+             (that.settings.y2 + that.tempSettings.y2));
+        var b = (that.settings.x1 - that.tempSettings.x1) *
+            (y - (that.settings.y3 + that.tempSettings.y3)) +
+            x * ((that.settings.y3 + that.tempSettings.y3) -
+               (that.settings.y1 + that.tempSettings.y1)) +
+            (that.settings.x3 + that.tempSettings.x3) *
+            ((that.settings.y1 + that.tempSettings.y1) - y);
+        var c = (that.settings.x1 - that.tempSettings.x1) *
+            ((that.settings.y2 + that.tempSettings.y2) - y) +
+            (that.settings.x2 + that.tempSettings.x2) *
+            (y - (that.settings.y1 + that.tempSettings.y1)) +
+            x * ((that.settings.y1 + that.tempSettings.y1) -
+               (that.settings.y2 + that.tempSettings.y2));
+
+        /* //未加變化量
+        var a = that.settings.x1*(that.settings.y2 - that.settings.y3) + that.settings.x2*(that.settings.y3 - that.settings.y1) + that.settings.x3*(that.settings.y1 - that.settings.y2);
+        var b = that.settings.x1*(y - that.settings.y3) + x*(that.settings.y3 - that.settings.y1) + that.settings.x3*(that.settings.y1 -y);
+        var c = that.settings.x1*(that.settings.y2 - y) + that.settings.x2*(y - that.settings.y1) + x*(that.settings.y1 - that.settings.y2);
+        */
         //條件
         if (((b + c) / a) < 1 && (b / a) > 0 && (c / a) > 0) {
             return true;
@@ -1144,29 +1189,112 @@ triangle.prototype = {
         else {
             console.log('沒點到', a, b, c);
         }
-    },
-    //draw triangle 
-    draw: function (ctx) {
-        const that = this;
-        ctx.fillStyle = that.backgroundColor;
-        ctx.beginPath();
-        ctx.moveTo(that.x1, that.y1);
-        ctx.lineTo(that.x2, that.y2);
-        ctx.lineTo(that.x3, that.y3);
-        ctx.closePath();
-        ctx.fill();
     }
-}
-function rectangle(name,info) {
+};
 
-}
+//rectangle
+function Rectangle(name, settings, backgroundColor, border) {
+    //名稱
+    this.name = name || "";
+    //永久的位置與寬高設置
+    this.settings = {
+        x: settings.x,
+        y: settings.y,
+        width: settings.width,
+        height: settings.height
+    };
+    //暫時的位置與寬高設置
+    this.tempSettings = {
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0
+    };
+    //內縮的padding寬度
+    this.border = border || 1;
+    //背景顏色
+    this.backgroundColor = backgroundColor;
+    //種類
+    this.type = "rectangle";
+};
+Rectangle.prototype = {
+    //位置設置
+    setPosition: function (x, y, forever) {
+        const that = this;
+        //非永久
+        if (!forever) {
+            that.tempSettings.x = x;
+            that.tempSettings.y = y;
+        }
+        else {
+            that.settings.x += x;
+            that.settings.y += y;
+            that.tempSettings.x = 0;//歸零
+            that.tempSettings.y = 0;
+        }
+    },
+    //寬高設置
+    setSize: function (x, y, forever) {
+        const that = this;
+        //非永久
+        if (!forever) {
+            that.tempSettings.width = x;
+            that.tempSettings.height = y;
+        }
+        else {
+            that.settings.width += x;
+            that.settings.height += y;
+            that.tempSettings.width = 0;//歸零
+            that.tempSettings.height = 0;
+        }
+    },
+    //[棄用]clear rectangle(看起來要整個畫布清除了)
+    clear: function (ctx) {
+        const that = this;
+        //not indefined
+        if (!isNaN(that.settings.x + that.tempSettings.x +
+                   that.settings.y + that.tempSettings.y +
+                   that.settings.width + that.tempSettings.width +
+                   that.settings.height + that.tempSettings.height)) {
+            ctx.clearRect((that.settings.x + that.tempSettings.x),
+                          (that.settings.y + that.tempSettings.y),
+                          (that.settings.width + that.tempSettings.width),
+                          (that.settings.height + that.tempSettings.width));
+        }
+        //console.log(that.x,that.y,that.width,that.height);
+    },
+    //[棄用]畫圖
+    draw: function (ctx, color) {
+        const that = this;
+        ctx.save();
+        //console.log('ctx',ctx);
+        ctx.fillStyle = color || that.backgroundColor;
+        ctx.fillRect((that.settings.x + that.tempSettings.x) + that.border,
+                     (that.settings.y + that.tempSettings.y) + that.border,
+                     (that.settings.width + that.tempSettings.width) - (that.border * 2),
+                     (that.settings.height + that.tempSettings.height) - (that.border * 2));
+        ctx.restore();
+    },
+    //檢查是否在物件的範圍內
+    hitCheck: function (x, y) {
+        const that = this;
+        //判斷長方形範圍
+        if (x > (that.settings.x + that.tempSettings.x) &&
+           x < (that.settings.x + that.tempSettings.x + that.settings.width + that.tempSettings.width) &&
+           y > (that.settings.y + that.tempSettings.y) &&
+           y < (that.settings.y + that.tempSettings.y + that.settings.height + that.tempSettings.height)) {
+            return true;
+        }
+    }
+};
+
 //模擬DOM紀錄DOM相關屬性値
-function Cell_canvas (name, x, y, width, height, backgroundColor, border) {
+function Cell_canvas(name, x, y, width, height, backgroundColor, border) {
     if (arguments.length !== arguments.callee.length) {
         throw new Error("parameter must have " + arguments.callee.length);
     }
     this.name = name || "";
-    //CSS Style
+    //posiiton and width and height
     this.style = new function () {
         //都轉數字格式
         this.left = +x;
@@ -1191,11 +1319,7 @@ function Cell_canvas (name, x, y, width, height, backgroundColor, border) {
         this.textBaseline = "middle",
         this.textAlign = "left";
     };
-    /*
-        function
-    */
-
-}
+};
 //Cell prototype function and default value
 Cell_canvas.prototype = {
     /*
