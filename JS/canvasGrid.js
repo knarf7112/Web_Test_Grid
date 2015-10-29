@@ -60,6 +60,8 @@ var Grid = function (obj) {
     this.columnSortNodeList = [];
     //排序過的數據
     this.sortedObject = {};
+    //元件搜尋的優先順序
+    this.searchPriorityList = [];
     //初始化
     this.init = function () {
         //1.建立展示資料元素
@@ -71,7 +73,7 @@ var Grid = function (obj) {
         //3.刷新Grid的dispaly cell物件
         this.refresh_allDisplayElementCssStyle();
         //5.建立flexi bar
-        //this.createResizeBar();
+        this.createResizeBar();
         //6.refresh flexi bar css style 
         //this.refresh_ResizeBarCssStyle();
         //7.flexi bar bind mouse evnt and calculate X range(Closure)
@@ -97,6 +99,8 @@ var Grid = function (obj) {
         //this.set_columnSortNode_CSS();
         //14.欄位排序元素click事件綁定
         //this.bind_event_columnSortNode();
+        //
+        this.bind_event_grid();
     };
     /*
         資料表格元件
@@ -237,31 +241,14 @@ var Grid = function (obj) {
         };
         //console.log('init flexi bar', main.ResizeBarNodeList.map(function (current, index, array) { return current.forward_width; }))
         //TODO ... 需加入委派的方法 1.要改sort位置 2.要改每個display的cell的位置和寬度 3.要改slider bar的寬度
-        
-    };
-    //6.refresh flexi bar css style 
-    this.refresh_ResizeBarCssStyle = function (mainObj, columnIndex, propertyName) {
-        var main = mainObj || this;
-        //flexiNodes = main.ResizeBarRootNode.children;
-        //設定所有縮放元素,若有指定起始index則取指定値當起始値
-        for (var index = columnIndex || 0; index < main.ResizeBarNodeList.length; index++) {
-            //若有指定設定名稱
-            if (!!propertyName) {
-                main.ResizeBarNodeList[index].node.style[propertyName] = main.ResizeBarNodeList[index].nodeCSS[propertyName];
-            }
-            else {
-                //設定所有Css Style
-                for (var property in main.ResizeBarNodeList[index].nodeCSS) {
-                    main.ResizeBarNodeList[index].node.style[property] = main.ResizeBarNodeList[index].nodeCSS[property];
-                }
-            }
-        }
+        main.searchPriorityList.unshift(main.ResizeBarNodeList);//加入搜尋列表
+        //console.log('搜尋列表', main.searchPriorityList);
     };
     //7.flexi bar bind mouse evnt and calculate X range(Closure)
     this.bind_event_ResizeBar = function () {
-        var main = this,
-            moveFlag = false,
-            ResizeBarIndex = 0;//紀錄當前觸發flexi bar 的索引值,當作column index
+        const main = this;
+        var moveFlag = false;
+        var ResizeBarIndex = 0;//紀錄當前觸發flexi bar 的索引值,當作column index
         //對所有的flexi bar 設定mousedown事件綁定//currentElement為自訂義物件
         main.ResizeBarNodeList.forEach(function (currentElement, index, array) {
             //console.log("CurrentElement", currentElement);
@@ -1024,6 +1011,47 @@ var Grid = function (obj) {
                 return parseInt(data1) < parseInt(data2);
         }
     };
+    /*
+        canvas event setting
+    */
+    this.bind_event_grid = function () {
+        const main = this;
+        var ctx = main.gridElement.getContext('2d');
+        var flag = false;
+        var selectedObject;
+        var startX, startY, endX, endY;
+        main.gridElement.onmousedown = function (e) {
+            if (!flag && (flag = true)) {
+                startX = e.layerX;
+                startY = e.layerY;
+                selectedObject = main.searchObject(startX, startY);
+            }
+        };
+        main.gridElement.onmousemove = function (e) {
+            if (flag) {
+
+            }
+        };
+        main.gridElement.onmouseup = main.gridElement.onmouseout = function (e) {
+            if (flag && !(flag = false)) {
+
+            }
+        }
+    };
+    this.searchObject = function (x, y) {
+        const main = this;
+        
+        console.log('main', main.searchPriorityList);
+        for (var i = 0; i < main.searchPriorityList.length; i++) {
+            for (var j = 0; j < main.searchPriorityList[i].length; j++) {
+                if (main.searchPriorityList[i][j].hitCheck(x, y)) {
+                    console.log('點了誰', main.searchPriorityList[i][j]);
+                    return main.searchPriorityList[i][j];
+                }
+            }
+        }
+        
+    }
 }
 
 //
