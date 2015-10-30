@@ -34,6 +34,7 @@ var Grid = function (obj) {
     this.ResizeBarCount = this.column;
     //紀錄每次滑鼠移動時的間距差
     this.ResizeBar_X_rangeList = [];
+    this.ResizeBar_rangeList = {};
     //mousedown start position
     this.X_start;
     //mousemove end position
@@ -71,7 +72,7 @@ var Grid = function (obj) {
         //2-1.設定欄位順序陣列
         this.set_columnSequenceArray();
         //3.刷新Grid的dispaly cell物件
-        this.refresh_allDisplayElementCssStyle();
+        this.refresh_allDisplayElement();
         //5.建立flexi bar
         this.createResizeBar();
         //6.refresh flexi bar css style 
@@ -99,6 +100,7 @@ var Grid = function (obj) {
         //this.set_columnSortNode_CSS();
         //14.欄位排序元素click事件綁定
         //this.bind_event_columnSortNode();
+        this.set_task_resizeBar();
         //
         this.bind_event_grid();
     };
@@ -111,6 +113,7 @@ var Grid = function (obj) {
         this.gridElement = this.shared.createElement('canvas', 'grid');
         this.gridElement.setAttribute('width', this.width);
         this.gridElement.setAttribute('height', this.height);
+        //this.gridElement.style.cssText = "border:3px solid red;padding:10px 10px;";
         this.mainElement.appendChild(this.gridElement);
     };
     //2.設定自定義的node結構
@@ -126,9 +129,9 @@ var Grid = function (obj) {
         var rowIndex;
         var columnIndex;
         var default_Left;
-        var nodeCss;
+        var backgroundColor;
+        var border = 1;
         var node;
-        var dataContainer;
         //set every column width and height(設定欄位平均寬度和厚度)
         main.columnWidth = (main.width / main.column);
         main.rowHeight = (main.height / main.row);
@@ -136,44 +139,34 @@ var Grid = function (obj) {
         for (var elementIndex = 0; elementIndex < len; elementIndex++) {
             isHeader = (elementIndex % main.row === 0);
             type = isHeader ? "header" : "cell";
+            backgroundColor = isHeader ? "rgb(120, 207, 207)" : "rgb(174, 233, 233)";
             attributes = isHeader ? { draggable: true } : {};
             rowIndex = (elementIndex % main.row);
             columnIndex = Math.floor(elementIndex / this.row);
             default_Left = (columnIndex * main.columnWidth);
-            nodeCss = {                                    //CSS Style 
-                position: "absolute",
-                width: (main.columnWidth),//+ "px",
-                height: (main.rowHeight),//+ "px",
-                top: (rowIndex * main.rowHeight),//+ "px",//因以欄位為基準,所以剛好相反
-                left: (columnIndex * main.columnWidth),//+ "px",
-                border: 2,//"2px solid white",
-                textAlign: "center",
-                backgroundColor: isHeader ? "rgb(120, 207, 207)" : "rgb(174, 233, 233)",
-                overflow: "hidden"
-            };
-            node = new Cell_canvas(
-                columnIndex + "-" + rowIndex,   //name
-                nodeCss.left,                   //x axis 列導向所以相反
-                nodeCss.top,                    //y axis
-                nodeCss.width,                  //width
-                nodeCss.height,                 //height
-                nodeCss.backgroundColor,        //backgound color
-                nodeCss.border);                //border width
-            //defined data content(自訂的資料物件)
-            dataContainer = new CellContainer(type, rowIndex, columnIndex, averageWidth, default_Left, null, node);
+            node = new Cell_canvas(columnIndex + "-" + rowIndex, elementIndex);
+            node.set_info(type, columnIndex, rowIndex);
+            node.set_Style((columnIndex * main.columnWidth),               //x axis 列導向所以相反
+                           (rowIndex * main.rowHeight),                    //y axis
+                           main.columnWidth,                               //width
+                           main.rowHeight,                                 //height
+                           backgroundColor,                                //backgound color
+                           border);                                        //border width
 
             //[[{}]] => column( row( data Object ) )
             //若不存在建立新的陣列容器
-            if (!container[dataContainer.column]) {
+            if (!container[node.columnIndex]) {
                 //container.push([...innerContainer]);//es6 array copy not support on vs2013 but browser is support
                 container.push([]);
             }
             //自訂物件推入array
-            container[dataContainer.column].push(dataContainer);
+            container[node.columnIndex].push(node);
         }
         console.log('refine result', container);
         //結果輸出
-        this.refineNodeTable = container;
+        main.refineNodeTable = container;
+        //加入搜尋點擊列表
+        main.searchPriorityList.push(main.refineNodeTable);
     };
     //2-1.設定欄位順序陣列
     this.set_columnSequenceArray = function () {
@@ -184,7 +177,7 @@ var Grid = function (obj) {
 
     };
     //3.刷新Grid內所有display shape
-    this.refresh_allDisplayElementCssStyle = function (mainObj, columnIndex) {
+    this.refresh_allDisplayElement = function (mainObj, columnIndex) {
         const main = mainObj || this;
         const ctx = main.gridElement.getContext('2d');
 
@@ -194,7 +187,7 @@ var Grid = function (obj) {
                 //get object point
                 tempObj = main.refineNodeTable[column_Index][rowIndex];
                 //draw this object
-                tempObj.node.translate_and_refresh_textContent(ctx);
+                tempObj.translate_and_refresh_textContent(ctx);
             }
         }
     };
@@ -206,43 +199,24 @@ var Grid = function (obj) {
         const main = this;
         var data;
         var settings;
+        const type = "ResizeBar";
         //create resize object
         for (var index = 0; index < main.column; index++) {
             var default_left = ((main.columnWidth * (index + 1)));// - main.ResizeBarWidth),//每個flexi bar的預設 X axis 位置
             //建立縮放物件(flexi bar)的資料結構
-            /*
-            data = {
-                index: index,               //第幾條
-                default_left: default_left, //初始位置
-                X_deviation: 0,//滑鼠事件的移動變化值(原始值的遞增或遞減)
-                forward_width: default_left - ((!!main.ResizeBarNodeList[index - 1]) ? main.ResizeBarNodeList[index - 1].default_left : 0),//與前一個元素的間距寬度
-                node: new Cell_canvas('ResizeBar' + index,default_left,0,main.ResizeBarWidth,main.height),       //自訂數據物件元素
-                nodeCSS: {                  //設定用CSS
-                    position: "absolute",
-                    //border: "1px solid yellow", //只是用來看元件位置
-                    backgroundColor: "",
-                    width: main.ResizeBarWidth + "px",
-                    height: main.height + "px",
-                    left: default_left + "px",
-                    top: "0px"
-                },
-                type: "ResizeBar"            //物件種類
-            };
-            */
             settings = {
                 x:default_left,
                 y:0,
                 width:main.ResizeBarWidth,
                 height:main.height
             };
-            data = new Rectangle("ResizeBar" + index, settings);
+            data = new Rectangle("ResizeBar" + index, index, settings, type);
             //console.log(currentElement);
             main.ResizeBarNodeList.push(data);//加入主物件
         };
-        //console.log('init flexi bar', main.ResizeBarNodeList.map(function (current, index, array) { return current.forward_width; }))
-        //TODO ... 需加入委派的方法 1.要改sort位置 2.要改每個display的cell的位置和寬度 3.要改slider bar的寬度
-        main.searchPriorityList.unshift(main.ResizeBarNodeList);//加入搜尋列表
-        //console.log('搜尋列表', main.searchPriorityList);
+        
+        //TODO ... 需加入委派的方法 1.要改sort位置 2.要改每個display的cell的位置和寬度 3.要改slider bar的寬度 後面再加
+        main.searchPriorityList.unshift(main.ResizeBarNodeList);//加入搜尋列表...放前面
     };
     //7.flexi bar bind mouse evnt and calculate X range(Closure)
     this.bind_event_ResizeBar = function () {
@@ -1014,6 +988,37 @@ var Grid = function (obj) {
     /*
         canvas event setting
     */
+    this.change_Cell_positionAndSize = function (index) {
+        const main = this;
+        console.log('delegate Func', index, main);
+        const selectedObj = main.ResizeBarNodeList[index];
+        //變更指定索引Cell的width和其後面物件的位置[column]
+        for (var i = index; i < main.refineNodeTable.length; i++) {
+            if (i === index) {
+                //變更寬度
+                main.refineNodeTable[i].forEach(function (current) {
+                    current.set_size(main.ResizeBarNodeList[index].tempSettings.x, main.ResizeBarNodeList[index].tempSettings.y);
+                });
+            }
+            else {
+                //變更位置
+                main.refineNodeTable[i].forEach(function (current) {
+                    current.set_position(main.ResizeBarNodeList[index].tempSettings.x, main.ResizeBarNodeList[index].tempSettings.y);
+                });
+            }
+        }
+
+        //refresh
+        main.refresh_allDisplayElement();
+    };
+    //設定Resise元件要做的事
+    this.set_task_resizeBar = function () {
+        const main = this;
+        main.ResizeBarNodeList.forEach(function (current) {
+            current.taskFuncList.push(main.change_Cell_positionAndSize);
+        });
+    }
+    //資料顯示部分綁定事件
     this.bind_event_grid = function () {
         const main = this;
         var ctx = main.gridElement.getContext('2d');
@@ -1024,34 +1029,71 @@ var Grid = function (obj) {
             if (!flag && (flag = true)) {
                 startX = e.layerX;
                 startY = e.layerY;
-                selectedObject = main.searchObject(startX, startY);
+                //依據座標檢查搜尋列表並回傳點擊的物件(沒找到則為undefined)
+                selectedObject = main.searchObject(main.searchPriorityList, startX, startY);
             }
         };
         main.gridElement.onmousemove = function (e) {
             if (flag) {
-
+                endX = e.layerX;
+                endY = e.layerY;
+                //紀錄移動間距
+                main.ResizeBar_rangeList[selectedObject.name] = endX - startX;
+                switch (selectedObject.type) {
+                    case "ResizeBar":
+                        console.log("Resizer mouse move ...", main.ResizeBar_rangeList);
+                        selectedObject.set_position(main.ResizeBar_rangeList[selectedObject.name], 0);
+                        break;
+                    case "":
+                        break;
+                    default:
+                        break;
+                }
+                //執行點擊物件賦予的任務
+                selectedObject.run_task(main, selectedObject.index);
             }
         };
-        main.gridElement.onmouseup = main.gridElement.onmouseout = function (e) {
+        main.gridElement.onmouseup = main.gridElement.onmouseleave = function (e) {
             if (flag && !(flag = false)) {
-
-            }
-        }
-    };
-    this.searchObject = function (x, y) {
-        const main = this;
-        
-        console.log('main', main.searchPriorityList);
-        for (var i = 0; i < main.searchPriorityList.length; i++) {
-            for (var j = 0; j < main.searchPriorityList[i].length; j++) {
-                if (main.searchPriorityList[i][j].hitCheck(x, y)) {
-                    console.log('點了誰', main.searchPriorityList[i][j]);
-                    return main.searchPriorityList[i][j];
+                switch (selectedObject.type) {
+                    case "ResizeBar":
+                        selectedObject.set_position(main.ResizeBar_rangeList[selectedObject.name], 0, true);
+                        console.log("Resizer mouse up or out ...", main.ResizeBar_rangeList, selectedObject);
+                        break;
+                    case "":
+                        break;
+                    default:
+                        break;
                 }
             }
         }
+    };
+    //遞迴檢查所有陣列中的陣列(一找到就不跑其他陣列的搜尋)
+    this.searchObject = function recursive(that, x, y) {
+        //console.log('testRecursive',that, x, y);
         
-    }
+        if (Array.isArray(that)) {
+            for (var i = 0; i < that.length; i++) {
+                if (Array.isArray(that[i])) {
+                    //console.log('進入遞迴');
+                    var result = recursive(that[i], x, y);//不能使用const,會無法改變result,造成搜到底 
+                    //找到就回傳物件
+                    if (!!result) {
+                        return result;
+                    }
+                }
+                else {
+                    if (that[i].hitCheck(x, y)) {
+                        console.log('點了誰', that[i]);
+                        return that[i];
+                    }
+                    //else {
+                    //    console.log('None');
+                    //}
+                }
+            }
+        }
+    };
 }
 
 //
@@ -1072,32 +1114,8 @@ Grid.prototype.shared = {
 };
 
 /*
- *  Grid的單位物件
- *
- *  @param {String} type
- *  @param {Number} rowIndex
- *  @param {Number} columnIndex
- *  @param {Number} default_Width
- *  @param {Number} default_Left
- *  @param {Object} nodeCssObj
- *  @param {Object|HTMLElement} node
- *  @param {Object} nodeAttrObj
- *  @param {String} value
- */
-function CellContainer(type, rowIndex, columnIndex, default_Width, default_Left, nodeCssObj, node, nodeAttrObj, value) {
-    this.type = type;                   ////column導向       //(Math.floor(elementIndex / this.column) == 0) ? "header" : "body"//row導向
-    this.row = rowIndex;                //column導向                    //Math.floor(elementIndex / this.column),  //row導向
-    this.column = columnIndex;          //column導向            //(elementIndex % this.column),//列導向
-    this.default_Width = default_Width;//預設寬度:平均值
-    this.default_Left = default_Left;   //預設X軸位置:固定寬度的間距
-    this.nodeCSS = nodeCssObj;          //
-    this.node = node;                   //
-    this.nodeAttributes = nodeAttrObj;
-    this.value = value;
-    this.isSelected = false;
-    this.deleFunc = [];
-};
-
+    Component Part
+*/
 //triangle
 function Triangle(name, settings, backgroundColor) {
     this.name = name;
@@ -1122,7 +1140,7 @@ function Triangle(name, settings, backgroundColor) {
 };
 Triangle.prototype = {
     //變更位置
-    setPosition: function (x, y, forever) {
+    set_position: function (x, y, forever) {
         const that = this;
         //非永有改變
         if (!forever) {
@@ -1149,7 +1167,7 @@ Triangle.prototype = {
         }
     },
     //變更大小
-    setSize: function (x, y, forever) {
+    set_size: function (x, y, forever) {
 
     },
     //清除三角  TODO ... 有殘餘的邊
@@ -1221,9 +1239,10 @@ Triangle.prototype = {
 };
 
 //rectangle
-function Rectangle(name, settings, backgroundColor, border) {
+function Rectangle(name, index, settings, type, backgroundColor, border) {
     //名稱
     this.name = name || "";
+    this.index = index;
     //永久的位置與寬高設置
     this.settings = {
         x: settings.x,
@@ -1243,11 +1262,13 @@ function Rectangle(name, settings, backgroundColor, border) {
     //背景顏色
     this.backgroundColor = backgroundColor;
     //種類
-    this.type = "rectangle";
+    this.type = type || "rectangle";
+    //
+    this.taskFuncList = [];
 };
 Rectangle.prototype = {
     //位置設置
-    setPosition: function (x, y, forever) {
+    set_position: function (x, y, forever) {
         const that = this;
         //非永久
         if (!forever) {
@@ -1262,7 +1283,7 @@ Rectangle.prototype = {
         }
     },
     //寬高設置
-    setSize: function (x, y, forever) {
+    set_size: function (x, y, forever) {
         const that = this;
         //非永久
         if (!forever) {
@@ -1274,6 +1295,13 @@ Rectangle.prototype = {
             that.settings.height += y;
             that.tempSettings.width = 0;//歸零
             that.tempSettings.height = 0;
+        }
+    },
+    //設置任務指標
+    set_task:function(tasks){
+        const that = this;
+        for(var i = 0 ;i < arguments.length;i++){
+            that.taskFuncList.push(arguments[i]);
         }
     },
     //[棄用]clear rectangle(看起來要整個畫布清除了)
@@ -1313,28 +1341,44 @@ Rectangle.prototype = {
            y < (that.settings.y + that.tempSettings.y + that.settings.height + that.tempSettings.height)) {
             return true;
         }
+    },
+    //執行委派的任務並轉移指標到主物件
+    run_task: function (main,index) {
+        const that = this;
+        if (that.taskFuncList.length > 0) {
+            that.taskFuncList.forEach(function (current) {
+                current.call(main, index);
+            });
+        }
     }
 };
 
-//模擬DOM紀錄DOM相關屬性値
-function Cell_canvas(name, x, y, width, height, backgroundColor, border) {
+//長方形的表格單位格元件
+function Cell_canvas(name,index) {
     if (arguments.length !== arguments.callee.length) {
         throw new Error("parameter must have " + arguments.callee.length);
     }
     this.name = name || "";
-    //posiiton and width and height
-    this.style = new function () {
-        //都轉數字格式
-        this.left = +x;
-        this.top = +y;
-        this.width = +width;
-        this.height = +height;
-        //背景顏色
-        this.backgroundColor = backgroundColor || "#bbb";
-        //border
-        this.border = border || 1;
-        //鼠標符號
-        this.cursor = "default";
+    //索引
+    this.index = index;
+    //種類
+    this.type = 'none';//"header" : "body"
+    //欄索引
+    this.columnIndex;
+    //列索引
+    this.rowIndex; 
+    //delegate function point
+    this.taskFuncList = [];
+    //selected
+    this.selected = false;
+    //永久的posiiton and width and height
+    this.style = {};
+    //臨時的posiiton and width and height
+    this.tempStyle = new function () {
+        this.left = 0;
+        this.top = 0;
+        this.width = 0;
+        this.height = 0;
     };
     //文字內容
     this.textContent = "這是測試超過長度是否切除,超過長度的會被切掉";//"teste國234567890";
@@ -1357,7 +1401,6 @@ Cell_canvas.prototype = {
     name: "",
     //畫布位移用的參數
     translate: new canvas_translate(0, 0),
-    //translate_Y: 0,
     //位置與大小的數據
     style: {
         //寬度
@@ -1391,14 +1434,22 @@ Cell_canvas.prototype = {
     */
     //畫矩形(清除後再畫會內縮1px)
     draw_rect: function (ctx) {
+        const that = this;
         //console.log('draw rectangle:' + this.name);
         //ctx.clearRect(this.style.left, this.style.top, this.style.width, this.style.height);
-        ctx.fillStyle = this.style.backgroundColor;
-        ctx.fillRect(this.style.left + this.style.border, this.style.top + this.style.border, this.style.width - (this.style.border * 2), this.style.height - (this.style.border * 2));
+        ctx.fillStyle = that.style.backgroundColor;
+        ctx.fillRect((that.style.left + that.style.border + that.tempStyle.left),
+            (that.style.top + that.style.border + that.tempStyle.top),
+            (that.style.width - (that.style.border * 2) + that.tempStyle.width),
+            (that.style.height - (that.style.border * 2) + that.tempStyle.height));
     },
     //清除矩形
     clear_rect: function (ctx) {
-        ctx.clearRect(this.style.left, this.style.top, this.style.width, this.style.height);
+        const that = this;
+        ctx.clearRect((that.style.left + that.tempStyle.left),
+            (that.style.top + that.tempStyle.top),
+            (that.style.width + that.tempStyle.width),
+            (that.style.height + that.tempStyle.height));
     },
     //刷新矩型內的文字內容(先畫矩形再畫文字內容)
     refresh_textContent: function (ctx, text) {
@@ -1420,11 +1471,11 @@ Cell_canvas.prototype = {
         //檢查字串長度是否超出矩形寬度
         var String_Width = ctx.measureText(that.textContent).width;//Calculate string width
         //console.log("str:", String_Width, "width:", this.style.width);
-        if (String_Width > that.style.width) {
+        if (String_Width > (that.style.width + that.tempStyle.width)) {
             var minus = that.textContent.length;//origin length
             var cutStr = "";//string temp
             //一直遞減一個字元,直到字串寬度小於矩形寬度
-            while (String_Width >= that.style.width) {
+            while (String_Width >= (that.style.width + that.tempStyle.width)) {
                 minus--;//減少一個字元長度
                 cutStr = that.textContent.slice(0, minus);//取得減少後的字串
                 String_Width = ctx.measureText(cutStr).width;//計算字串寬度(會依據font的size來算)
@@ -1464,11 +1515,44 @@ Cell_canvas.prototype = {
         this.translate.modify(x, y);
     },
     //設定位置與大小資訊
-    set_Style: function (x, y, width, height) {
-        this.style.left = +x || this.style.left;
-        this.style.top = +y || this.style.top;
-        this.style.width = +width || this.style.width;
-        this.style.height = +height || this.style.height;
+    set_Style: function (x, y, width, height, backgroundColor, border) {
+        const that = this;
+        that.style.left = +x;
+        that.style.top = +y;
+        that.style.width = +width;
+        that.style.height = +height;
+        that.style.backgroundColor = backgroundColor;
+        that.style.border = border;
+    },
+    //位置設置
+    set_position: function (x, y, forever) {
+        const that = this;
+        //非永久
+        if (!forever) {
+            that.tempStyle.x = x;
+            that.tempStyle.y = y;
+        }
+        else {
+            that.style.x += x;
+            that.style.y += y;
+            that.tempStyle.x = 0;//歸零
+            that.tempStyle.y = 0;
+        }
+    },
+    //寬高設置
+    set_size: function (tempWidth, tempHeight, forever) {
+        const that = this;
+        //非永久
+        if (!forever) {
+            that.tempStyle.width = tempWidth;
+            that.tempStyle.height = tempHeight;
+        }
+        else {
+            that.style.width += tempWidth;
+            that.style.height += tempHeight;
+            that.tempStyle.width = 0;//歸零
+            that.tempStyle.height = 0;
+        }
     },
     //設定文字風格
     set_fontStyle: function (color, size, unit, typeface, textBaseline, textAlign) {
@@ -1479,6 +1563,39 @@ Cell_canvas.prototype = {
         this.font.typeface = typeface || this.font.typeface;//字體 ex: 'Cibrili', '標楷體'
         this.font.textBaseline = textBaseline || this.font.textBaseline;
         this.font.textAlign = textAlign || this.font.textAlign;
+    },
+    //設定種類與欄列資訊
+    set_info: function(type,columnIndex,rowIndex){
+        this.type = type;////column導向       //(Math.floor(elementIndex / this.column) == 0) ? "header" : "body"//row導向               
+        this.columnIndex = columnIndex;//column導向            //(elementIndex % this.column),//列導向
+        this.rowIndex = rowIndex;//column導向                    //Math.floor(elementIndex / this.column),  //row導向
+    },
+    //設置任務指標
+    set_task: function (tasks) {
+        const that = this;
+        for (var i = 0 ; i < arguments.length; i++) {
+            that.taskFuncList.push(arguments[i]);
+        }
+    },
+    //檢查是否在物件的範圍內
+    hitCheck: function (x, y){
+        const that = this;
+        //判斷長方形範圍
+        if(x > (that.style.left + that.style.border) && 
+           x < ((that.style.left + that.style.border) + that.style.width) &&
+           y > (that.style.top + that.style.border) &&
+           y < ((that.style.top + that.style.border) + that.style.height)) {
+            return true;
+        }
+    },
+    //執行委派的任務並轉移指標到主物件
+    run_task: function (main,index) {
+        const that = this;
+        if (that.taskFuncList.length > 0) {
+            that.taskFuncList.forEach(function (current) {
+                current(index);
+            }, main);
+        }
     }
 }
 //translate當作共用的值(用來全部一起位移)
