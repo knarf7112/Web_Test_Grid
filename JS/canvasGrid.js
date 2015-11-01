@@ -988,7 +988,7 @@ var Grid = function (obj) {
     /*
         canvas event setting
     */
-    this.change_Cell_positionAndSize = function (index) {
+    this.change_Cell_positionAndSize = function (index,forever) {
         const main = this;
         console.log('delegate Func', index, main);
         const selectedObj = main.ResizeBarNodeList[index];
@@ -997,13 +997,14 @@ var Grid = function (obj) {
             if (i === index) {
                 //變更寬度
                 main.refineNodeTable[i].forEach(function (current) {
-                    current.set_size(main.ResizeBarNodeList[index].tempSettings.x, main.ResizeBarNodeList[index].tempSettings.y);
+                    current.set_size(main.ResizeBarNodeList[index].tempSettings.x, main.ResizeBarNodeList[index].tempSettings.y, forever);
                 });
             }
             else {
+                //console.log("change position", i, main.ResizeBarNodeList[index].tempSettings.x, main.ResizeBarNodeList[index].tempSettings.y);
                 //變更位置
                 main.refineNodeTable[i].forEach(function (current) {
-                    current.set_position(main.ResizeBarNodeList[index].tempSettings.x, main.ResizeBarNodeList[index].tempSettings.y);
+                    current.set_position(main.ResizeBarNodeList[index].tempSettings.x, main.ResizeBarNodeList[index].tempSettings.y, forever);
                 });
             }
         }
@@ -1037,8 +1038,15 @@ var Grid = function (obj) {
             if (flag) {
                 endX = e.layerX;
                 endY = e.layerY;
-                //紀錄移動間距
-                main.ResizeBar_rangeList[selectedObject.name] = endX - startX;
+                //最小範圍檢測
+                if ((selectedObject.settings.x + (endX - startX)) < 20) {
+                    main.ResizeBar_rangeList[selectedObject.name] = 20 - selectedObject.style.width;
+                }
+                else {
+                    //紀錄移動間距
+                    main.ResizeBar_rangeList[selectedObject.name] = endX - startX;
+                }
+                
                 switch (selectedObject.type) {
                     case "ResizeBar":
                         console.log("Resizer mouse move ...", main.ResizeBar_rangeList);
@@ -1050,11 +1058,12 @@ var Grid = function (obj) {
                         break;
                 }
                 //執行點擊物件賦予的任務
-                selectedObject.run_task(main, selectedObject.index);
+                selectedObject.run_task(main, selectedObject.index, false);
             }
         };
         main.gridElement.onmouseup = main.gridElement.onmouseleave = function (e) {
             if (flag && !(flag = false)) {
+                console.log('ERROR', selectedObject);
                 switch (selectedObject.type) {
                     case "ResizeBar":
                         selectedObject.set_position(main.ResizeBar_rangeList[selectedObject.name], 0, true);
@@ -1065,6 +1074,8 @@ var Grid = function (obj) {
                     default:
                         break;
                 }
+                //執行點擊物件賦予的任務
+                selectedObject.run_task(main, selectedObject.index, true);
             }
         }
     };
@@ -1242,6 +1253,7 @@ Triangle.prototype = {
 function Rectangle(name, index, settings, type, backgroundColor, border) {
     //名稱
     this.name = name || "";
+    //物件索引
     this.index = index;
     //永久的位置與寬高設置
     this.settings = {
@@ -1487,7 +1499,7 @@ Cell_canvas.prototype = {
         }
         ctx.textAlign = that.font.textAlign;//對齊左右
         ctx.textBaseline = that.font.textBaseline;//基準線設定
-        ctx.fillText(text, (that.style.left + 5), (that.style.top + (that.style.height / 2)));
+        ctx.fillText(text, (that.style.left + that.tempStyle.left + 5), (that.style.top + that.tempStyle.top + (that.style.height / 2)));
     },
     //畫布位移
     translatePosition: function (ctx, trans_x, trans_y) {
@@ -1529,14 +1541,14 @@ Cell_canvas.prototype = {
         const that = this;
         //非永久
         if (!forever) {
-            that.tempStyle.x = x;
-            that.tempStyle.y = y;
+            that.tempStyle.left = x;
+            that.tempStyle.top = y;
         }
         else {
-            that.style.x += x;
-            that.style.y += y;
-            that.tempStyle.x = 0;//歸零
-            that.tempStyle.y = 0;
+            that.style.left += x;
+            that.style.top += y;
+            that.tempStyle.left = 0;//歸零
+            that.tempStyle.top = 0;
         }
     },
     //寬高設置
