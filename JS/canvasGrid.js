@@ -166,7 +166,7 @@ var Grid = function (obj) {
         //結果輸出
         main.refineNodeTable = container;
         //加入搜尋點擊列表
-        main.searchPriorityList.push(main.refineNodeTable);
+        //main.searchPriorityList.push(main.refineNodeTable);
     };
     //2-1.設定欄位順序陣列
     this.set_columnSequenceArray = function () {
@@ -1357,18 +1357,21 @@ function Rectangle(name, index, settings, type, backgroundColor, border) {
     //物件索引
     this.index = index;
     //永久的位置與寬高設置
-    this.settings = {
-        x: settings.x,
-        y: settings.y,
-        width: settings.width,
-        height: settings.height
+    this.settings = new function () {
+        if (!(settings instanceof Object)) {
+            throw new TypeError("[settings]type not object" + settings.constructor);
+        }
+        this.x = settings.x;
+        this.y = settings.y;
+        this.width = settings.width;
+        this.height = settings.height;
     };
-    //暫時的位置與寬高設置
-    this.tempSettings = {
-        x: 0,
-        y: 0,
-        width: 0,
-        height: 0
+    //存放暫時的位置與寬高設置
+    this.tempSettings = new function() {
+        this.x = 0;
+        this.y = 0;
+        this.width = 0;
+        this.height = 0;
     };
     //內縮的padding寬度
     this.border = border || 1;
@@ -1378,6 +1381,12 @@ function Rectangle(name, index, settings, type, backgroundColor, border) {
     this.type = type || "rectangle";
     //
     this.taskFuncList = [];
+    //下一個物件指標
+    this.nextObj;
+    //前一個物件指標
+    this.forwardObj;
+    //子陣列指標
+    this.childrenArray;
 };
 Rectangle.prototype = {
     //位置設置
@@ -1393,6 +1402,19 @@ Rectangle.prototype = {
             that.settings.y += y;
             that.tempSettings.x = 0;//歸零
             that.tempSettings.y = 0;
+
+        }
+        //attatch on this object(this bar's children)
+        if(Array.isArray(that.childrenArray) && that.childrenArray.length != 0){
+            that.childrenArray.forEach(function(current,index,arr){
+                //table node method
+                current.set_position(x, y, forever);
+            });
+        }
+        //next object is exist
+        if (!!that.nextObj) {
+            console.log('start change next object', that.nextObj.name);
+            that.nextObj.set_position(x, y, forever);
         }
     },
     //寬高設置
@@ -1409,6 +1431,39 @@ Rectangle.prototype = {
             that.tempSettings.width = 0;//歸零
             that.tempSettings.height = 0;
         }
+        //if have children object then change all child object size(this bar's children)
+        if (Array.isArray(that.childrenArray) && that.childrenArray.length != 0) {
+            that.childrenArray.forEach(function (current, index, arr) {
+                //table node method
+                current.set_size(x, y, forever);
+            });
+        }
+        //if have next object then change next object position
+        if (!!that.nextObj) {
+            console.log('start change next object', that.nextObj.name);
+            that.nextObj.set_position(x, y, forever);
+        }
+    },
+    //設置下一個物件(原型:Rectangle)
+    set_nextObj :function (obj){
+        if (!(obj instanceof Rectangle)) {
+            throw new TypeError('[set_nextObj] Error: param Type is not Rectangle');
+        }
+        this.nextObj = obj;
+    },
+    //設置前一個物件(原型:Rectangle)
+    set_forwardObj:function(obj){
+        if (!(obj instanceof Rectangle)) {
+            throw new TypeError('[set_forwardObj] Error: param Type is not Rectangle');
+        }
+        this.forwardObj = obj;
+    },
+    //設置附屬於物件的陣列物件
+    set_childrenArray:function(array){
+        if (Array.isArray(Array)) {
+            throw new TypeError('[set_childrenArray] Error: param Type is not Array');
+        }
+        this.childrenArray = array;
     },
     //設置任務指標
     set_task:function(tasks){
