@@ -211,6 +211,15 @@ var Grid = function (obj) {
                 height:main.height
             };
             data = new Rectangle("ResizeBar" + index, index, settings, type);
+            //if has forward object then set link 
+            if (!!main.ResizeBarNodeList[index - 1]) {
+                //current object set forward object link
+                data.set_forwardObj(main.ResizeBarNodeList[index - 1]);
+                //forward object set next object link
+                main.ResizeBarNodeList[index - 1].set_nextObj(data);
+            }
+            //current object set children list
+            data.set_childrenArray(main.refineNodeTable[index]);
             //console.log(currentElement);
             main.ResizeBarNodeList.push(data);//加入主物件
         };
@@ -1128,106 +1137,6 @@ Grid.prototype.shared = {
 /*
     Component Part
 */
-//方型LinkList物件
-function RectObject(name,type,index) {
-    //object name
-    this.name = name;
-    //object type
-    this.type = type;
-    //object index
-    this.index = +index;
-    //next RectObject point
-    this.nextObj;
-    //forward RectObject point
-    this.forwardObj;
-    //object position info
-    this.position = {
-        // x axis
-        x: 0,
-        // y axis
-        y: 0,
-        //temp x axis
-        temp_x: 0,
-        //temp y axis
-        temp_y: 0,
-        //上一次x變化量
-        last_x: 0,
-        //上一次y變化量
-        last_y: 0
-    };
-    //大小資訊
-    this.size = {
-        width: 0,
-        height: 0,
-        temp_width: 0,
-        temp_height: 0,
-        //上一次寬度變化量
-        last_width: 0,
-        //上一次高度變化量
-        last_height: 0
-    };
-    //
-    
-}
-RectObject.prototype = {
-    /*
-        share variable
-    */
-    set_info: function () {
-        const that = this;
-    },
-    //設置下一個物件的指標
-    set_nextObj: function (obj) {
-        if (!(obj instanceof RectObject)) {
-            throw TypeError("[set_nextObj]Error:輸入參數非RectObject物件");
-        }
-        const that = this;
-        that.nextObj = obj;
-    },
-    //設置上一個物件的指標
-    set_forwardObj: function (obj) {
-        if (!(obj instanceof RectObject)) {
-            throw TypeError("[set_forwardObj]Error:輸入參數非RectObject物件");
-        }
-        const that = this;
-        that.forwardObj = obj;
-    },
-    //位置設置
-    set_position: function (x, y, forever) {
-        const that = this;
-        //非永久
-        if (!forever) {
-            that.position.x = x;
-            that.position.y = y;
-        }
-        else {
-            that.position.last_x = x;
-            that.position.last_y = y;
-            that.position.x += x;
-            that.position.y += y;
-            that.position.temp_x = 0;//歸零
-            that.position.temp_y = 0;
-        }
-    },
-    //大小設置
-    set_size: function (x, y, forever) {
-        const that = this;
-        //非永久
-        if (!forever) {
-            that.size.temp_width = x;
-            that.size.temp_height = y;
-        }
-        else {
-            that.size.last_width = x;
-            that.size.last_height = y;
-            that.size.width += x;
-            that.size.height += y;
-            that.size.temp_width = 0;//歸零
-            that.size.temp_width = 0;
-        }
-    },
-}
-
 //triangle
 function Triangle(name, settings, backgroundColor) {
     this.name = name;
