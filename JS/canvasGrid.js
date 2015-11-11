@@ -1025,7 +1025,8 @@ var Grid = function (obj) {
     this.set_task_resizeBar = function () {
         const main = this;
         main.ResizeBarNodeList.forEach(function (current) {
-            current.taskFuncList.push(main.change_Cell_positionAndSize);
+            //add task to resize bar
+            //current.taskFuncList.push(main.change_Cell_positionAndSize);
         });
     }
     //資料顯示部分綁定事件
@@ -1047,45 +1048,55 @@ var Grid = function (obj) {
             if (flag) {
                 endX = e.layerX;
                 endY = e.layerY;
-                e.target.style.cursor = "" 
-                //最小範圍檢測
-                if ((selectedObject.settings.x + (endX - startX)) < 20) {
-                    main.ResizeBar_rangeList[selectedObject.name] = 20 - selectedObject.style.width;
+                e.target.style.cursor = "col-resize";
+                //
+                if (!!selectedObject) {
+                    switch (selectedObject.type) {
+                        case "ResizeBar":
+                            //最小範圍檢測,先取得物件的X位置資訊
+                            if ((selectedObject.get_forwardRange() + (endX - startX)) < 20) {
+                                main.ResizeBar_rangeList[selectedObject.name] = 20 - selectedObject.get_forwardRange();
+                            }
+                            else {
+                                //紀錄移動間距
+                                main.ResizeBar_rangeList[selectedObject.name] = endX - startX;
+                            }
+                            //console.log("Resizer mouse move ...", main.ResizeBar_rangeList);
+                            console.log("移動物件名稱", selectedObject.name);
+                            selectedObject.set_position(main.ResizeBar_rangeList[selectedObject.name], 0);//, selectedObject.name);
+                            break;
+                        case "":
+                            break;
+                        default:
+                            break;
+                    }
+                    //執行點擊物件賦予的任務
+                    //selectedObject.run_task(main, selectedObject.index, false);
+                    ctx.clearRect(0, 0, main.width, main.height);
+                    main.refresh_allDisplayElement();
                 }
-                else {
-                    //紀錄移動間距
-                    main.ResizeBar_rangeList[selectedObject.name] = endX - startX;
-                }
-                
-                switch (selectedObject.type) {
-                    case "ResizeBar":
-                        console.log("Resizer mouse move ...", main.ResizeBar_rangeList);
-                        selectedObject.set_position(main.ResizeBar_rangeList[selectedObject.name], 0);
-                        break;
-                    case "":
-                        break;
-                    default:
-                        break;
-                }
-                //執行點擊物件賦予的任務
-                selectedObject.run_task(main, selectedObject.index, false);
             }
         };
         main.gridElement.onmouseup = main.gridElement.onmouseleave = function (e) {
             if (flag && !(flag = false)) {
-                console.log('ERROR', selectedObject);
-                switch (selectedObject.type) {
-                    case "ResizeBar":
-                        selectedObject.set_position(main.ResizeBar_rangeList[selectedObject.name], 0, true);
-                        console.log("Resizer mouse up or out ...", main.ResizeBar_rangeList, selectedObject);
-                        break;
-                    case "":
-                        break;
-                    default:
-                        break;
+                console.log('滑鼠閃人', selectedObject);
+                e.target.style.cursor = "";
+                if (!!selectedObject) {
+                    switch (selectedObject.type) {
+                        case "ResizeBar":
+                            selectedObject.set_position(main.ResizeBar_rangeList[selectedObject.name], 0, true);//, selectedObject.name);
+                            console.log("Resizer mouse up or out ...", main.ResizeBar_rangeList, selectedObject);
+                            break;
+                        case "":
+                            break;
+                        default:
+                            break;
+                    }
+                    //執行點擊物件賦予的任務
+                    //selectedObject.run_task(main, selectedObject.index, true);
+                    ctx.clearRect(0, 0, main.width, main.height);
+                    main.refresh_allDisplayElement();
                 }
-                //執行點擊物件賦予的任務
-                selectedObject.run_task(main, selectedObject.index, true);
             }
         }
     };
@@ -1290,6 +1301,8 @@ function Rectangle(name, index, settings, type, backgroundColor, border) {
     this.type = type || "rectangle";
     //
     this.taskFuncList = [];
+    //是否自動變更連動物件的位置資訊
+    this.auto_changeNextObj = true;//false;
     //下一個物件指標
     this.nextObj;
     //前一個物件指標
@@ -1299,7 +1312,7 @@ function Rectangle(name, index, settings, type, backgroundColor, border) {
 };
 Rectangle.prototype = {
     //位置設置
-    set_position: function (x, y, forever) {
+    set_position: function (x, y, forever, firstObjName) {
         const that = this;
         //非永久
         if (!forever) {
@@ -1313,17 +1326,29 @@ Rectangle.prototype = {
             that.tempSettings.y = 0;
 
         }
-        //attatch on this object(this bar's children)
-        if(Array.isArray(that.childrenArray) && that.childrenArray.length != 0){
-            that.childrenArray.forEach(function(current,index,arr){
-                //table node method
-                current.set_position(x, y, forever);
-            });
-        }
-        //next object is exist
-        if (!!that.nextObj) {
-            console.log('start change next object', that.nextObj.name);
-            that.nextObj.set_position(x, y, forever);
+        if (!!that.auto_changeNextObj) {
+            //attatch on this object(this bar's children)
+            if (Array.isArray(that.childrenArray) && that.childrenArray.length != 0) {
+                console.log("拖曳桿:",that.name, firstObjName);
+                if (that.name === firstObjName) {
+                    that.childrenArray.forEach(function (current, index, arr) {
+                        //拖曳物件後面的物件的子陣列變更位置
+                        current.set_position(x, y, forever);
+                    });
+                }
+                else {
+                    that.childrenArray.forEach(function (current, index, arr) {
+                        //拖曳物件後面的物件的子陣列變更位置
+                        current.set_position(x, y, forever);
+                        //current.set_size(x, y, forever);
+                    });
+                }
+            }
+            //next object is exist
+            if (!!that.nextObj) {
+                console.log('start change next object', that.nextObj.name);
+                that.nextObj.set_position(x, y, forever, firstObjName);
+            }
         }
     },
     //寬高設置
@@ -1339,18 +1364,6 @@ Rectangle.prototype = {
             that.settings.height += y;
             that.tempSettings.width = 0;//歸零
             that.tempSettings.height = 0;
-        }
-        //if have children object then change all child object size(this bar's children)
-        if (Array.isArray(that.childrenArray) && that.childrenArray.length != 0) {
-            that.childrenArray.forEach(function (current, index, arr) {
-                //table node method
-                current.set_size(x, y, forever);
-            });
-        }
-        //if have next object then change next object position
-        if (!!that.nextObj) {
-            console.log('start change next object', that.nextObj.name);
-            that.nextObj.set_position(x, y, forever);
         }
     },
     //設置下一個物件(原型:Rectangle)
@@ -1379,6 +1392,18 @@ Rectangle.prototype = {
         const that = this;
         for(var i = 0 ;i < arguments.length;i++){
             that.taskFuncList.push(arguments[i]);
+        }
+    },
+    //與前一個物件的間距
+    get_forwardRange:function(){
+        const that = this;
+        //forward obj is exist
+        if (!!that.forwardObj) {
+            //取得兩物件的間距
+            return that.settings.x - that.forwardObj.settings.x;
+        }
+        else {
+            return that.settings.x;
         }
     },
     //[棄用]clear rectangle(看起來要整個畫布清除了)
@@ -1420,11 +1445,11 @@ Rectangle.prototype = {
         }
     },
     //執行委派的任務並轉移指標到主物件
-    run_task: function (main,index) {
+    run_task: function (main,index,flag) {
         const that = this;
         if (that.taskFuncList.length > 0) {
             that.taskFuncList.forEach(function (current) {
-                current.call(main, index);
+                current.call(main, index, flag);
             });
         }
     }
@@ -1536,7 +1561,8 @@ Cell_canvas.prototype = {
     //清除畫布->位移畫布->畫矩形->寫字
     translate_and_refresh_textContent: function (ctx, text) {
         this.textContent = text || this.textContent;
-        this.save_restore(ctx, this.clear_rect, this.translatePosition, this.draw_rect, this.draw_text);//清除矩形並重畫矩形再重畫文字內容
+        //this.save_restore(ctx, this.clear_rect, this.translatePosition, this.draw_rect, this.draw_text);//清除矩形並重畫矩形再重畫文字內容
+        this.save_restore(ctx, this.translatePosition, this.draw_rect, this.draw_text);//在最外面已清除畫面,所以就只需畫各個元件
     },
     //畫文字內容
     draw_text: function (ctx) {
