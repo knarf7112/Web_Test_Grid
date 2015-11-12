@@ -46,7 +46,7 @@ var Grid = function (obj) {
     //flexi bar元件的寬度値
     this.ResizeBarWidth = 10;
     //page control root node
-    this.pageControlRootNode = { incrementPageRoot: undefined, specifiedPageRoot: undefined };
+    this.pageControlRootNode;
     //page control array
     this.pageControl = { incrementPageList: [], specifiedPageList: [] };
     //current click page
@@ -80,7 +80,7 @@ var Grid = function (obj) {
         //7.flexi bar bind mouse evnt and calculate X range(Closure)
         //this.bind_event_ResizeBar();
         //8.建立(遞增或遞減)切頁元件
-        //this.createIncrementPageControl();
+        this.createIncrementPageControl();
         //9.設定(遞增或遞減)切頁元件CSS Style
         //this.set_incrementPageControl_CSS();
         //10.(遞增或遞減)切頁事件綁定
@@ -227,132 +227,35 @@ var Grid = function (obj) {
         //TODO ... 需加入委派的方法 1.要改sort位置 2.要改每個display的cell的位置和寬度 3.要改slider bar的寬度 後面再加
         main.searchPriorityList.unshift(main.ResizeBarNodeList);//加入搜尋列表...放前面
     };
-    //7.flexi bar bind mouse evnt and calculate X range(Closure)
-    this.bind_event_ResizeBar = function () {
-        const main = this;
-        var moveFlag = false;
-        var ResizeBarIndex = 0;//紀錄當前觸發flexi bar 的索引值,當作column index
-        //對所有的flexi bar 設定mousedown事件綁定//currentElement為自訂義物件
-        main.ResizeBarNodeList.forEach(function (currentElement, index, array) {
-            //console.log("CurrentElement", currentElement);
-
-            currentElement.node.addEventListener("mousedown", function (e) {
-                e.stopPropagation();//事件不再上升
-                e.preventDefault();//停用DOM的drag功能,避免拖曳DOM
-                //ref:http://stackoverflow.com/questions/69430/is-there-a-way-to-make-text-unselectable-on-an-html-page
-                console.log("Down", e.target.className, index);
-                ResizeBarIndex = index;
-                moveFlag = true;
-                main.X_start = document.body.scrollLeft + main.gridElement.scrollLeft + e.pageX;
-                console.log("Down:pageX ", main.X_start);
-            }, false);
-        });
-        //對Grid Root 元素作mousemove事件綁定 -- 用來計算移動間距與展示移動間距
-        main.gridElement.addEventListener("mousemove", function (e) {
-            //document.addEventListener("mousemove", function (e) {
-            if (moveFlag) {
-                main.X_end = e.pageX;//X axis end position
-                //console.log("srcollLeft", document.body.scrollLeft, "main.X_end", main.X_end, "main.X_start", main.X_start);
-                var range = (document.body.scrollLeft + main.gridElement.scrollLeft + main.X_end - main.X_start);
-
-                //檢查最小間距
-                if ((main.ResizeBarNodeList[ResizeBarIndex].forward_width + range) < 30) {
-                    range = 30 - main.ResizeBarNodeList[ResizeBarIndex].forward_width;
-                }
-                //取得移動間距差(設定目前指定索引的間距)
-                main.ResizeBar_X_rangeList[ResizeBarIndex] = range;//(document.body.scrollLeft + main.gridElement.scrollLeft + main.X_end - main.X_start);//取得間距
-                //console.log("Range", main.ResizeBar_X_rangeList[ResizeBarIndex], "Index", ResizeBarIndex);
-
-                //更新flexi bar並累計最後的X軸偏移量
-                main._update_nodeCSS_CssStyle(main, ResizeBarIndex, main.ResizeBar_X_rangeList[ResizeBarIndex], 'left');
-            }
-        });
-        //mouse up event (設定最終的X axis偏移量)
-        document.addEventListener("mouseup", function (e) {
-            if (moveFlag) {
-                moveFlag = false;//關閉mousemove
-                //設定最終的X axis偏移量(ResizeBarNodeList陣列內所有的X_deviation)
-                main._update_ResizeBar_last_Xdeviation(main, ResizeBarIndex, main.ResizeBar_X_rangeList[ResizeBarIndex]);
-                //只看X偏移量,所以其它屬性濾掉了
-                console.log("Up:X軸變化量", main.ResizeBarNodeList.map(function (current, index, array) { return current.X_deviation; }));
-                //只看寬度變化量
-                console.log("Up:寬度變化量", main.ResizeBarNodeList.map(function (current, index, array) { return current.forward_width; }));
-            }
-        });
-    };
-    //7-1.更新指定與其相關的dispaly物件和flexi bar物件的width值與left值(update specified column width and others left, update specified flexi bar width and others left )
-    this._update_nodeCSS_CssStyle = function (mainObj, columnIndex, x_range, propertyName) {
-        for (var index = columnIndex ; index < mainObj.ResizeBarNodeList.length; index++) {
-            /**********************************************************/
-            //(指定的拖曳軸)預設left + 上次變化量 + 本次變化量 => (指定拖曳軸)本次所需移動的left位置
-            var resizeBar_Left = (mainObj.ResizeBarNodeList[index].default_left + mainObj.ResizeBarNodeList[index].X_deviation + x_range);
-            /*******更新flexi bar條*******/
-            //更新flexi bar的nodeCSS內指定的屬性值
-            mainObj.ResizeBarNodeList[index].nodeCSS[propertyName] = resizeBar_Left + "px";
-            //更新flexi bar元素的指定CSS style
-            mainObj.ResizeBarNodeList[index].node.style[propertyName] = mainObj.ResizeBarNodeList[index].nodeCSS[propertyName];
-
-            //debugger;
-            /**********************************************************/
-            /*
-                更新Grid元件
-            */
-            //若為拖曳元素的索引値
-            if (index === columnIndex) {
-                //變更目前寬度
-                mainObj.refineNodeTable[index].forEach(function (currentElement, innerIndex, array) {
-                    //更新display元素的nodeCSS內指定的屬性值
-                    currentElement.nodeCSS['width'] = (mainObj.ResizeBarNodeList[index].forward_width + x_range) + "px";//前一次的寬度値 + 變化量
-                    //更新display元素的指定CSS style
-                    currentElement.node.style['width'] = currentElement.nodeCSS['width'];
-                });
-            }
-            else {
-                //為拖曳元素後面所有的元素(left位置重新定位)
-                mainObj.refineNodeTable[index].forEach(function (currentElement, innerIndex, array) {
-                    //前一個元素的預設值位置 + 之前累積的變化量 + 這次的變化量
-                    currentElement.nodeCSS[propertyName] = (mainObj.ResizeBarNodeList[index - 1].default_left + mainObj.ResizeBarNodeList[index - 1].X_deviation + x_range) + 'px';//
-                    currentElement.node.style[propertyName] = currentElement.nodeCSS[propertyName];
-                });
-            }
-            /**********************************************************/
-            /*
-                更新排序元件位置
-            */
-            mainObj.columnSortNodeList[index].nodeCSS[propertyName] = resizeBar_Left - 15 + "px";
-            mainObj.columnSortNodeList[index].node.style[propertyName] = mainObj.columnSortNodeList[index].nodeCSS[propertyName];
-        }
-        //console.log('Move refinedNodeList', mainObj.refineNodeTable);
-    };
-    //7-2.依據指定索引更新flexi bar指定的間距値並累加指定索引後面的X軸變化量(依據指定的索引變更並累計ResizeBarNodeList陣列內所有的X_deviation)
-    this._update_ResizeBar_last_Xdeviation = function (mainObj, columnIndex, x_range) {
-        for (var index = columnIndex ; index < mainObj.ResizeBarNodeList.length; index++) {
-            mainObj.ResizeBarNodeList[index].X_deviation += x_range;//累加X axis 變化量
-        }
-        mainObj.ResizeBarNodeList[columnIndex].forward_width += x_range;//依據指定索引更新寬度變化量
-    };
     /*
         切頁元件
     */
-    //8.建立(遞增或遞減)切頁元件(只有7個control:首頁,遞增1或10頁,遞減1或10頁,末頁)
+    //5.建立(遞增或遞減)切頁元件(只有7個control:首頁,遞增1或10頁,遞減1或10頁,末頁)
     this.createIncrementPageControl = function () {
-        var main = this,
-            tmpNodes,
-            textValue = ['min', '-10', '-1', 'Status', '+1', '+10', 'max'];
+        const main = this;
+        const textValue = ['min', '-10', '-1', 'Status', '+1', '+10', 'max'];
+        var tmpNodes;
+        //新增一個canvas DOM 來展示切頁物件
+        main.pageControlRootNode = main.shared.createElement('canvas', 'pageControl');
+        main.pageControlRootNode.width = main.width;
+        main.pageControlRootNode.height = 50;
+        //TODO.... 要建立DOM先
         //建立(遞增或遞減)切頁控制元件
-        main.pageControlRootNode.incrementPageRoot = main.new.create('div', 7, 'multiple_page_control');
+        //main.pageControlRootNode.incrementPageRoot = main.new.create('div', 7, 'multiple_page_control');
         //Control DOM Collection cast to Array 
-        tmpNodes = Array.prototype.slice.call(main.pageControlRootNode.incrementPageRoot.children);//
+        //tmpNodes = Array.prototype.slice.call(main.pageControlRootNode.incrementPageRoot.children);//
         //console.log('Control Node', tmpNodes);
         /*********************************************************/
         //initial control property
+        /*
         tmpNodes.forEach(function (current, index, array) {
             //依據textValue陣列資料値選擇並取得切頁資料物件
             var data = main._get_incrementPageControl_Object(current, index, textValue[index]);
             main.pageControl.incrementPageList.push(data);
         });
-        console.log('page Control', main.pageControl.incrementPageList);
-        main.mainElement.appendChild(main.pageControlRootNode.incrementPageRoot);
+        */
+        console.log('page Control', main.pageControl);
+        main.mainElement.appendChild(main.pageControlRootNode);
     };
     //(私)取得(遞增或遞減)切頁資料物件
     this._get_incrementPageControl_Object = function (node, index, category) {
@@ -1062,8 +965,7 @@ var Grid = function (obj) {
                                 main.ResizeBar_rangeList[selectedObject.name] = endX - startX;
                             }
                             //console.log("Resizer mouse move ...", main.ResizeBar_rangeList);
-                            console.log("移動物件名稱", selectedObject.name);
-                            selectedObject.set_position(main.ResizeBar_rangeList[selectedObject.name], 0);//, selectedObject.name);
+                            selectedObject.set_position(main.ResizeBar_rangeList[selectedObject.name], 0, false, selectedObject.name);
                             break;
                         case "":
                             break;
@@ -1077,6 +979,14 @@ var Grid = function (obj) {
                 }
             }
         };
+        document.addEventListener('mousemove', function changeMouseCursor(e) {
+            if (!!main.searchObject(main.searchPriorityList, e.layerX, e.layerY)) {
+                main.gridElement.style.cursor = "col-resize";
+            }
+            else {
+                main.gridElement.style.cursor = "";
+            }
+        }, false);
         main.gridElement.onmouseup = main.gridElement.onmouseleave = function (e) {
             if (flag && !(flag = false)) {
                 console.log('滑鼠閃人', selectedObject);
@@ -1084,7 +994,7 @@ var Grid = function (obj) {
                 if (!!selectedObject) {
                     switch (selectedObject.type) {
                         case "ResizeBar":
-                            selectedObject.set_position(main.ResizeBar_rangeList[selectedObject.name], 0, true);//, selectedObject.name);
+                            selectedObject.set_position(main.ResizeBar_rangeList[selectedObject.name], 0, true, selectedObject.name);
                             console.log("Resizer mouse up or out ...", main.ResizeBar_rangeList, selectedObject);
                             break;
                         case "":
@@ -1314,6 +1224,7 @@ Rectangle.prototype = {
     //位置設置
     set_position: function (x, y, forever, firstObjName) {
         const that = this;
+        const objectName = firstObjName;
         //非永久
         if (!forever) {
             that.tempSettings.x = x;
@@ -1329,25 +1240,24 @@ Rectangle.prototype = {
         if (!!that.auto_changeNextObj) {
             //attatch on this object(this bar's children)
             if (Array.isArray(that.childrenArray) && that.childrenArray.length != 0) {
-                console.log("拖曳桿:",that.name, firstObjName);
-                if (that.name === firstObjName) {
+                //console.log("拖曳桿:", that.name, objectName);
+                if (that.name === objectName) {
                     that.childrenArray.forEach(function (current, index, arr) {
-                        //拖曳物件後面的物件的子陣列變更位置
-                        current.set_position(x, y, forever);
+                        //拖曳物件的子陣列變更寬度
+                        current.set_size(x, y, forever);
                     });
                 }
                 else {
                     that.childrenArray.forEach(function (current, index, arr) {
-                        //拖曳物件後面的物件的子陣列變更位置
+                        //拖曳物件後面連接的物件子陣列變更位置
                         current.set_position(x, y, forever);
-                        //current.set_size(x, y, forever);
                     });
                 }
             }
             //next object is exist
             if (!!that.nextObj) {
-                console.log('start change next object', that.nextObj.name);
-                that.nextObj.set_position(x, y, forever, firstObjName);
+                //console.log('start change next object', that.nextObj.name);
+                that.nextObj.set_position(x, y, forever, objectName);
             }
         }
     },
