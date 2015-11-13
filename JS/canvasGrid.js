@@ -1403,6 +1403,8 @@ function Cell_canvas(name,index) {
         this.textBaseline = "middle",
         this.textAlign = "left";
     };
+    //圖片路徑
+    this.imagePath;
 };
 //Cell prototype function and default value
 Cell_canvas.prototype = {
@@ -1501,6 +1503,17 @@ Cell_canvas.prototype = {
         ctx.textAlign = that.font.textAlign;//對齊左右
         ctx.textBaseline = that.font.textBaseline;//基準線設定
         ctx.fillText(text, (that.style.left + that.tempStyle.left + 5), (that.style.top + that.tempStyle.top + (that.style.height / 2)));
+    },
+    //paint image
+    draw_image: function (ctx, imagePath) {
+        const that = this;
+        const img = new Image();
+        const data = imagePath || that.imagePath;//若有輸入用輸入的或預設的
+        img.src = that.imagePath;
+        img.onload = function draw(e) {
+            console.log("載入完成,開始畫圖");
+            ctx.drawImage(img, that.style.left, that.style.top, that.style.width, that.style.height);
+        };
     },
     //畫布位移
     translatePosition: function (ctx, trans_x, trans_y) {
