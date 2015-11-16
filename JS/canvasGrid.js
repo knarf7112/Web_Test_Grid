@@ -48,7 +48,21 @@ var Grid = function (obj) {
     //page control root node
     this.pageControlRootNode;
     //page control array
-    this.pageControl = { incrementPageList: [], specifiedPageList: [] };
+    this.pageControl = new function () {
+        //page control(increment) kind
+        this.textValue = ['min', '-10', '-1', 'Status', '+1', '+10', 'max'];
+        //page control(increment) default image
+        this.defaultImg = {
+            left_end: '/CSS/ICON/double_arrow_left.png',
+            left_double_arrow: '/CSS/ICON/double_arrow_left.png',
+            left_arrow: '/CSS/ICON/arrow_left.png',
+            right_arrow: '/CSS/ICON/arrow_right.png',
+            right_double_arrow: '/CSS/ICON/double_arrow_right.png',
+            right_end: '/CSS/ICON/right_end.png'
+        };
+        this.incrementPageList = [];
+        this.specifiedPageList = [];
+    };
     //current click page
     this.currentPage = 0;
     //Grid額外的寬度
@@ -111,7 +125,7 @@ var Grid = function (obj) {
     this.createDisplayNode = function () {
         //建立展示資料元素
         this.gridElement = this.shared.createElement('canvas', 'grid');
-        this.gridElement.setAttribute('width', this.width);
+        this.gridElement.setAttribute('width', this.width);// + 50);
         this.gridElement.setAttribute('height', this.height);
         //this.gridElement.style.cssText = "border:3px solid red;padding:10px 10px;";
         this.mainElement.appendChild(this.gridElement);
@@ -233,15 +247,19 @@ var Grid = function (obj) {
     //5.建立(遞增或遞減)切頁元件(只有7個control:首頁,遞增1或10頁,遞減1或10頁,末頁)
     this.createIncrementPageControl = function () {
         const main = this;
-        const textValue = ['min', '-10', '-1', 'Status', '+1', '+10', 'max'];
-        var tmpNodes;
+        var tmp_pageNode;
+        var tmp_pageObject;
         //新增一個canvas DOM 來展示切頁物件
         main.pageControlRootNode = main.shared.createElement('canvas', 'pageControl');
         main.pageControlRootNode.width = main.width;
         main.pageControlRootNode.height = 50;
         //TODO.... 要建立DOM先
         //建立(遞增或遞減)切頁控制元件
-        //main.pageControlRootNode.incrementPageRoot = main.new.create('div', 7, 'multiple_page_control');
+        for (var index = 0; index < main.pageControl.textValue.length; index++) {
+            tmp_pageNode = new Cell_canvas(main.pageControl.textValue[index], index);
+            tmp_pageObject = main._get_incrementPageControl_Object(tmp_pageNode, index, main.pageControl.textValue[index]);
+            main.pageControl.incrementPageList.push(tmp_pageObject);
+        }
         //Control DOM Collection cast to Array 
         //tmpNodes = Array.prototype.slice.call(main.pageControlRootNode.incrementPageRoot.children);//
         //console.log('Control Node', tmpNodes);
@@ -254,7 +272,7 @@ var Grid = function (obj) {
             main.pageControl.incrementPageList.push(data);
         });
         */
-        console.log('page Control', main.pageControl);
+        console.log('page Control increment', main.pageControl.incrementPageList);
         main.mainElement.appendChild(main.pageControlRootNode);
     };
     //(私)取得(遞增或遞減)切頁資料物件
@@ -264,17 +282,17 @@ var Grid = function (obj) {
                 index: index,
                 node: node,
                 nodeCSS: {
-                    "position": "absolute",
-                    "background-color": "#e8f3f3",
-                    "border": "1px solid white",
+                    position: "absolute",
+                    backgroundColor: "#e8f3f3",
+                    border: "1px solid white",
                     //"border-radius": "10px",
-                    "width": "50px",
-                    "height": "50px",
-                    "top": (main.height + 12) + "px",
-                    "text-align": "center",
+                    width: 50,
+                    height: 50,
+                    top: (main.height + 12),
+                    textAlign: "center",
                     //padding:"20px",
-                    "line-height": "50px",  //textContent下移
-                    "visibility": "visible"
+                    lineHeight: 50,  //textContent下移
+                    visibility: "visible"
                 },
                 value: "",//category,
                 category: category,
@@ -282,39 +300,39 @@ var Grid = function (obj) {
             };
         switch (category) {
             case "Status":
-                data.nodeCSS["width"] = (main.width * 10 / 16) + 'px';//"100px";
-                data.nodeCSS["left"] = (+main.pageControl.incrementPageList[index - 1].nodeCSS['width'].split('px')[0] + +main.pageControl.incrementPageList[index - 1].nodeCSS['left'].split('px')[0]) + "px";
+                data.nodeCSS.width = (main.width * 10 / 16);//"100px";
+                data.nodeCSS.left = (+main.pageControl.incrementPageList[index - 1].nodeCSS.width + +main.pageControl.incrementPageList[index - 1].nodeCSS.left);
                 data.nodeCSS["visibility"] = "hidden";//隱藏起來(暫時不用)
                 break;
             case "-10":
-                data.node.classList.add('double_arrow_left');
-                data.nodeCSS["width"] = (main.width / 16) + 'px';//分成16等份來切區塊//"50px";
-                data.nodeCSS["left"] = (+main.pageControl.incrementPageList[index - 1].nodeCSS['width'].split('px')[0] + +main.pageControl.incrementPageList[index - 1].nodeCSS['left'].split('px')[0]) + "px";
+                data.node.set_img_Path(main.pageControl.defaultImg.left_double_arrow);
+                data.nodeCSS["width"] = (main.width / 16);//分成16等份來切區塊//"50px";
+                data.nodeCSS["left"] = (+main.pageControl.incrementPageList[index - 1].nodeCSS['width'] + +main.pageControl.incrementPageList[index - 1].nodeCSS['left']);
                 break;
             case "-1":
-                data.node.classList.add('arrow_left');
-                data.nodeCSS["width"] = (main.width / 16) + 'px';//分成16等份來切區塊//"50px";
-                data.nodeCSS["left"] = (+main.pageControl.incrementPageList[index - 1].nodeCSS['width'].split('px')[0] + +main.pageControl.incrementPageList[index - 1].nodeCSS['left'].split('px')[0]) + "px";
+                data.node.set_img_Path(main.pageControl.defaultImg.left_arrow);
+                data.nodeCSS["width"] = (main.width / 16);//分成16等份來切區塊//"50px";
+                data.nodeCSS["left"] = (+main.pageControl.incrementPageList[index - 1].nodeCSS['width'] + +main.pageControl.incrementPageList[index - 1].nodeCSS['left']);
                 break;
             case "+1":
-                data.node.classList.add('arrow_right');
-                data.nodeCSS["width"] = (main.width / 16) + 'px';//分成16等份來切區塊//"50px";
-                data.nodeCSS["left"] = (+main.pageControl.incrementPageList[index - 1].nodeCSS['width'].split('px')[0] + +main.pageControl.incrementPageList[index - 1].nodeCSS['left'].split('px')[0]) + "px";
+                data.node.set_img_Path(main.pageControl.defaultImg.right_arrow);
+                data.nodeCSS["width"] = (main.width / 16);//分成16等份來切區塊//"50px";
+                data.nodeCSS["left"] = (+main.pageControl.incrementPageList[index - 1].nodeCSS['width'] + +main.pageControl.incrementPageList[index - 1].nodeCSS['left']);
                 break;
             case "+10":
-                data.node.classList.add('double_arrow_right');
-                data.nodeCSS["width"] = (main.width / 16) + 'px';//分成16等份來切區塊//"50px";
-                data.nodeCSS["left"] = (+main.pageControl.incrementPageList[index - 1].nodeCSS['width'].split('px')[0] + +main.pageControl.incrementPageList[index - 1].nodeCSS['left'].split('px')[0]) + "px";
+                data.node.set_img_Path(main.pageControl.defaultImg.right_double_arrow);
+                data.nodeCSS["width"] = (main.width / 16);//分成16等份來切區塊//"50px";
+                data.nodeCSS["left"] = (+main.pageControl.incrementPageList[index - 1].nodeCSS['width'] + +main.pageControl.incrementPageList[index - 1].nodeCSS['left']);
                 break;
             case "max":
-                data.node.classList.add('right_end');
-                data.nodeCSS["width"] = (main.width / 16) + 'px';//分成16等份來切區塊//"50px";
-                data.nodeCSS["left"] = (+main.pageControl.incrementPageList[index - 1].nodeCSS['width'].split('px')[0] + +main.pageControl.incrementPageList[index - 1].nodeCSS['left'].split('px')[0]) + "px";
+                data.node.set_img_Path(main.pageControl.defaultImg.right_end);
+                data.nodeCSS["width"] = (main.width / 16);//分成16等份來切區塊//"50px";
+                data.nodeCSS["left"] = (+main.pageControl.incrementPageList[index - 1].nodeCSS['width'] + +main.pageControl.incrementPageList[index - 1].nodeCSS['left']);
                 break;
             case "min":
-                data.node.classList.add('left_end');
-                data.nodeCSS["width"] = "50px";
-                data.nodeCSS["left"] = "0px";
+                data.node.set_img_Path(main.pageControl.defaultImg.left_end);
+                data.nodeCSS["width"] = 50;
+                data.nodeCSS["left"] = 0;
                 break;
             default:
                 throw new Error("Page Control Category not defined");
@@ -1039,20 +1057,20 @@ var Grid = function (obj) {
 }
 
 //
-Grid.prototype.shared = {
+Grid.prototype.shared = new function Grid_prototype() {
     //建立DOM元素並設定class Name
-    createElement: function (tagName, className) {
+    this.createElement = function (tagName, className) {
         const element = document.createElement(tagName);
         if (!!className) {
             element.classList.add(className);
         };
         return element;
-    },
-    createRect: function (x, y, width, height) {
+    };
+    this.createRect = function (x, y, width, height) {
         const rect = {};
 
 
-    }
+    };
 };
 
 /*
@@ -1080,9 +1098,9 @@ function Triangle(name, settings, backgroundColor) {
     this.backgroundColor = backgroundColor;
     this.type = "triangle";
 };
-Triangle.prototype = {
+Triangle.prototype = new function Triangle_prototype(){
     //變更位置
-    set_position: function (x, y, forever) {
+    this.set_position = function (x, y, forever) {
         const that = this;
         //非永有改變
         if (!forever) {
@@ -1107,18 +1125,18 @@ Triangle.prototype = {
             that.tempSettings.y2 = 0;
             that.tempSettings.y3 = 0;
         }
-    },
+    };
     //變更大小
-    set_size: function (x, y, forever) {
+    this.set_size = function (x, y, forever) {
 
-    },
+    };
     //清除三角  TODO ... 有殘餘的邊
-    clear: function (ctx, color) {
+    this.clear =  function (ctx, color) {
         const that = this;
         that.draw(ctx, color);
-    },
+    };
     //畫圖
-    draw: function (ctx, color) {
+    this.draw = function (ctx, color) {
         const that = this;
         ctx.save();
         ctx.fillStyle = color || that.color;
@@ -1138,9 +1156,9 @@ Triangle.prototype = {
         //ctx.closePath();
         ctx.fill();
         ctx.restore();
-    },
+    };
     //檢查是否在物件的範圍內
-    hitCheck: function (x, y) {
+    this.hitCheck = function (x, y) {
         const that = this;
         //公式
         var a = (that.settings.x1 + that.tempSettings.x1) *
@@ -1177,7 +1195,7 @@ Triangle.prototype = {
         else {
             console.log('沒點到', a, b, c);
         }
-    }
+    };
 };
 
 //rectangle
@@ -1220,9 +1238,9 @@ function Rectangle(name, index, settings, type, backgroundColor, border) {
     //子陣列指標
     this.childrenArray;
 };
-Rectangle.prototype = {
+Rectangle.prototype = new function Rect_prototype(){
     //位置設置
-    set_position: function (x, y, forever, firstObjName) {
+    this.set_position = function (x, y, forever, firstObjName) {
         const that = this;
         const objectName = firstObjName;
         //非永久
@@ -1260,9 +1278,9 @@ Rectangle.prototype = {
                 that.nextObj.set_position(x, y, forever, objectName);
             }
         }
-    },
+    };
     //寬高設置
-    set_size: function (x, y, forever) {
+    this.set_size = function (x, y, forever) {
         const that = this;
         //非永久
         if (!forever) {
@@ -1275,37 +1293,37 @@ Rectangle.prototype = {
             that.tempSettings.width = 0;//歸零
             that.tempSettings.height = 0;
         }
-    },
+    };
     //設置下一個物件(原型:Rectangle)
-    set_nextObj :function (obj){
+    this.set_nextObj = function (obj){
         if (!(obj instanceof Rectangle)) {
             throw new TypeError('[set_nextObj] Error: param Type is not Rectangle');
         }
         this.nextObj = obj;
-    },
+    };
     //設置前一個物件(原型:Rectangle)
-    set_forwardObj:function(obj){
+    this.set_forwardObj = function(obj){
         if (!(obj instanceof Rectangle)) {
             throw new TypeError('[set_forwardObj] Error: param Type is not Rectangle');
         }
         this.forwardObj = obj;
-    },
+    };
     //設置附屬於物件的陣列物件
-    set_childrenArray:function(array){
+    this.set_childrenArray = function(array){
         if (Array.isArray(Array)) {
             throw new TypeError('[set_childrenArray] Error: param Type is not Array');
         }
         this.childrenArray = array;
-    },
+    };
     //設置任務指標
-    set_task:function(tasks){
+    this.set_task = function(tasks){
         const that = this;
         for(var i = 0 ;i < arguments.length;i++){
             that.taskFuncList.push(arguments[i]);
         }
-    },
+    };
     //與前一個物件的間距
-    get_forwardRange:function(){
+    this.get_forwardRange = function(){
         const that = this;
         //forward obj is exist
         if (!!that.forwardObj) {
@@ -1315,9 +1333,9 @@ Rectangle.prototype = {
         else {
             return that.settings.x;
         }
-    },
+    };
     //[棄用]clear rectangle(看起來要整個畫布清除了)
-    clear: function (ctx) {
+    this.clear = function (ctx) {
         const that = this;
         //not indefined
         if (!isNaN(that.settings.x + that.tempSettings.x +
@@ -1330,9 +1348,9 @@ Rectangle.prototype = {
                           (that.settings.height + that.tempSettings.width));
         }
         //console.log(that.x,that.y,that.width,that.height);
-    },
+    };
     //[棄用]畫圖
-    draw: function (ctx, color) {
+    this.draw = function (ctx, color) {
         const that = this;
         ctx.save();
         //console.log('ctx',ctx);
@@ -1342,9 +1360,9 @@ Rectangle.prototype = {
                      (that.settings.width + that.tempSettings.width) - (that.border * 2),
                      (that.settings.height + that.tempSettings.height) - (that.border * 2));
         ctx.restore();
-    },
+    };
     //檢查是否在物件的範圍內
-    hitCheck: function (x, y) {
+    this.hitCheck = function (x, y) {
         const that = this;
         //判斷長方形範圍
         if (x > (that.settings.x + that.tempSettings.x) &&
@@ -1353,16 +1371,16 @@ Rectangle.prototype = {
            y < (that.settings.y + that.tempSettings.y + that.settings.height + that.tempSettings.height)) {
             return true;
         }
-    },
+    };
     //執行委派的任務並轉移指標到主物件
-    run_task: function (main,index,flag) {
+    this.run_task = function (main, index, flag) {
         const that = this;
         if (that.taskFuncList.length > 0) {
             that.taskFuncList.forEach(function (current) {
                 current.call(main, index, flag);
             });
         }
-    }
+    };
 };
 
 //長方形的表格單位格元件
@@ -1407,47 +1425,47 @@ function Cell_canvas(name,index) {
     this.imagePath;
 };
 //Cell prototype function and default value
-Cell_canvas.prototype = {
+Cell_canvas.prototype = new function Cell_prototype() {
     /*
         default prototype value
     */
     //pseudo dom name
-    name: "",
+    this.name = "";
     //畫布位移用的參數
-    translate: new canvas_translate(0, 0),
+    this.translate = new canvas_translate(0, 0);
     //位置與大小的數據
-    style: {
+    this.style = new function () {
         //寬度
-        width: 0,
+        this.width = 0;
         //高度
-        height: 0,
+        this.height = 0;
         //X axis
-        left: 0,
+        this.left = 0;
         //Y axis
-        top: 0,
+        this.top = 0;
         //border width
-        border: 0,
+        this.border = 0;
         //background color
-        backgroundColor: "yellow",
+        this.backgroundColor = "yellow";
         //cursor style
-        cursor: "default"
-    },
+        this.cursor = "default";
+    };
     //typeface and size setting
-    font: {
-        color: "black",
-        size: 15,
-        unit: "px",
-        typeface: "Calibri",
-        textBaseline: "middle",
-        textAlign: "left"
+    this.font = new function () {
+        this.color = "black";
+        this.size = 15;
+        this.unit = "px";
+        this.typeface = "Calibri";
+        this.textBaseline = "middle";
+        this.textAlign = "left";
     },
     //text
-    textContent: undefined,
+    this.textContent;
     /*
       draw function
     */
     //畫矩形(清除後再畫會內縮1px)
-    draw_rect: function (ctx) {
+    this.draw_rect = function (ctx) {
         const that = this;
         //console.log('draw rectangle:' + this.name);
         //ctx.clearRect(this.style.left, this.style.top, this.style.width, this.style.height);
@@ -1456,28 +1474,28 @@ Cell_canvas.prototype = {
             (that.style.top + that.style.border + that.tempStyle.top),
             (that.style.width - (that.style.border * 2) + that.tempStyle.width),
             (that.style.height - (that.style.border * 2) + that.tempStyle.height));
-    },
+    };
     //清除矩形
-    clear_rect: function (ctx) {
+    this.clear_rect = function (ctx) {
         const that = this;
         ctx.clearRect((that.style.left + that.tempStyle.left),
             (that.style.top + that.tempStyle.top),
             (that.style.width + that.tempStyle.width),
             (that.style.height + that.tempStyle.height));
-    },
+    };
     //刷新矩型內的文字內容(先畫矩形再畫文字內容)
-    refresh_textContent: function (ctx, text) {
+    this.refresh_textContent = function (ctx, text) {
         this.textContent = text || this.textContent;
         this.save_restore(ctx, this.clear_rect, this.draw_rect, this.draw_text);//清除矩形並重畫矩形再重畫文字內容
-    },
+    };
     //清除畫布->位移畫布->畫矩形->寫字
-    translate_and_refresh_textContent: function (ctx, text) {
+    this.translate_and_refresh_textContent = function (ctx, text) {
         this.textContent = text || this.textContent;
         //this.save_restore(ctx, this.clear_rect, this.translatePosition, this.draw_rect, this.draw_text);//清除矩形並重畫矩形再重畫文字內容
         this.save_restore(ctx, this.translatePosition, this.draw_rect, this.draw_text);//在最外面已清除畫面,所以就只需畫各個元件
-    },
+    };
     //畫文字內容
-    draw_text: function (ctx) {
+    this.draw_text = function (ctx) {
         //console.log("draw text:" + this.name);
         const that = this;
         var text = "";
@@ -1503,29 +1521,30 @@ Cell_canvas.prototype = {
         ctx.textAlign = that.font.textAlign;//對齊左右
         ctx.textBaseline = that.font.textBaseline;//基準線設定
         ctx.fillText(text, (that.style.left + that.tempStyle.left + 5), (that.style.top + that.tempStyle.top + (that.style.height / 2)));
-    },
+    };
     //paint image
-    draw_image: function (ctx, imagePath) {
+    this.draw_image = function (ctx, imagePath) {
         const that = this;
         const img = new Image();
         const data = imagePath || that.imagePath;//若有輸入用輸入的或預設的
+        //看要不要判斷圖片路徑是否存在
         img.src = that.imagePath;
         img.onload = function draw(e) {
             console.log("載入完成,開始畫圖");
             ctx.drawImage(img, that.style.left, that.style.top, that.style.width, that.style.height);
         };
-    },
+    };
     //畫布位移
-    translatePosition: function (ctx, trans_x, trans_y) {
+    this.translatePosition = function (ctx, trans_x, trans_y) {
         var x = trans_x || this.translate.x;
         var y = trans_y || this.translate.y;
         if (x !== 0 || y !== 0) {
             console.log("執行位移", x, y);
             ctx.translate(x, y);
         }
-    },
+    };
     //隔離畫布狀態並執行操作方法,操作方法指標依序帶入參數
-    save_restore: function (ctx) {
+    this.save_restore = function (ctx) {
         ctx.save();//產生新的stack隔離上次的Style設定
         for (var i = 1; i < arguments.length; i++) {
             if (arguments[i].constructor !== Function) {
@@ -1535,13 +1554,13 @@ Cell_canvas.prototype = {
             arguments[i].call(this, ctx);//因為再呼叫function時的this指到window了,所以這邊帶入當前的物件
         }
         ctx.restore();
-    },
+    };
     //設定canvas translate位置的數據
-    set_translate: function (x, y) {
+    this.set_translate = function (x, y) {
         this.translate.modify(x, y);
-    },
+    };
     //設定位置與大小資訊
-    set_Style: function (x, y, width, height, backgroundColor, border) {
+    this.set_Style = function (x, y, width, height, backgroundColor, border) {
         const that = this;
         that.style.left = +x;
         that.style.top = +y;
@@ -1549,9 +1568,9 @@ Cell_canvas.prototype = {
         that.style.height = +height;
         that.style.backgroundColor = backgroundColor;
         that.style.border = border;
-    },
+    };
     //位置設置
-    set_position: function (x, y, forever) {
+    this.set_position = function (x, y, forever) {
         const that = this;
         //非永久
         if (!forever) {
@@ -1564,9 +1583,9 @@ Cell_canvas.prototype = {
             that.tempStyle.left = 0;//歸零
             that.tempStyle.top = 0;
         }
-    },
+    };
     //寬高設置
-    set_size: function (tempWidth, tempHeight, forever) {
+    this.set_size = function (tempWidth, tempHeight, forever) {
         const that = this;
         //非永久
         if (!forever) {
@@ -1579,9 +1598,9 @@ Cell_canvas.prototype = {
             that.tempStyle.width = 0;//歸零
             that.tempStyle.height = 0;
         }
-    },
+    };
     //設定文字風格
-    set_fontStyle: function (color, size, unit, typeface, textBaseline, textAlign) {
+    this.set_fontStyle = function (color, size, unit, typeface, textBaseline, textAlign) {
         //依據Canvas的font 設定
         this.font.color = color || this.font.color;//ex:'red', 'rgb(0,0,0)', 'rgba(0,0,0,1)', '#ffffffff'
         this.font.size = +size || this.font.size; //number(自動轉10進位)
@@ -1589,22 +1608,26 @@ Cell_canvas.prototype = {
         this.font.typeface = typeface || this.font.typeface;//字體 ex: 'Cibrili', '標楷體'
         this.font.textBaseline = textBaseline || this.font.textBaseline;
         this.font.textAlign = textAlign || this.font.textAlign;
-    },
+    };
     //設定種類與欄列資訊
-    set_info: function(type,columnIndex,rowIndex){
+    this.set_info = function(type,columnIndex,rowIndex){
         this.type = type;////column導向       //(Math.floor(elementIndex / this.column) == 0) ? "header" : "body"//row導向               
         this.columnIndex = columnIndex;//column導向            //(elementIndex % this.column),//列導向
         this.rowIndex = rowIndex;//column導向                    //Math.floor(elementIndex / this.column),  //row導向
-    },
+    };
+    //設定圖片路徑
+    this.set_img_Path = function (path) {
+        this.imagePath = path;
+    };
     //設置任務指標
-    set_task: function (tasks) {
+    this.set_task = function (tasks) {
         const that = this;
         for (var i = 0 ; i < arguments.length; i++) {
             that.taskFuncList.push(arguments[i]);
         }
-    },
+    };
     //檢查是否在物件的範圍內
-    hitCheck: function (x, y){
+    this.hitCheck = function (x, y){
         const that = this;
         //判斷長方形範圍
         if(x > (that.style.left + that.style.border) && 
@@ -1613,16 +1636,16 @@ Cell_canvas.prototype = {
            y < ((that.style.top + that.style.border) + that.style.height)) {
             return true;
         }
-    },
+    };
     //執行委派的任務並轉移指標到主物件
-    run_task: function (main,index) {
+    this.run_task = function (main, index) {
         const that = this;
         if (that.taskFuncList.length > 0) {
             that.taskFuncList.forEach(function (current) {
                 current(index);
             }, main);
         }
-    }
+    };
 }
 //translate當作共用的值(用來全部一起位移)
 //用來設定canvas translate,只改一次,所有instance參考同一個値
