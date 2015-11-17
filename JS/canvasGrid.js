@@ -53,7 +53,7 @@ var Grid = function (obj) {
         this.textValue = ['min', '-10', '-1', 'Status', '+1', '+10', 'max'];
         //page control(increment) default image
         this.defaultImg = {
-            left_end: '/CSS/ICON/double_arrow_left.png',
+            left_end: '/CSS/ICON/left_end.png',
             left_double_arrow: '/CSS/ICON/double_arrow_left.png',
             left_arrow: '/CSS/ICON/arrow_left.png',
             right_arrow: '/CSS/ICON/arrow_right.png',
@@ -75,8 +75,10 @@ var Grid = function (obj) {
     this.columnSortNodeList = [];
     //排序過的數據
     this.sortedObject = {};
-    //元件搜尋的優先順序
-    this.searchPriorityList = [];
+    //Grid事件搜尋的優先順序之物件列表
+    this.gridSearchPriorityList = [];
+    //PageControl事件搜尋的優先順序之物件列表
+    this.pageSearchPriorityList = [];
     //初始化
     this.init = function () {
         //1.建立展示資料元素
@@ -89,16 +91,12 @@ var Grid = function (obj) {
         this.refresh_allDisplayElement();
         //5.建立flexi bar
         this.createResizeBar();
-        //6.refresh flexi bar css style 
-        //this.refresh_ResizeBarCssStyle();
-        //7.flexi bar bind mouse evnt and calculate X range(Closure)
-        //this.bind_event_ResizeBar();
-        //8.建立(遞增或遞減)切頁元件
+        //6.建立(遞增或遞減)切頁元件
         this.createIncrementPageControl();
-        //9.設定(遞增或遞減)切頁元件CSS Style
-        //this.set_incrementPageControl_CSS();
+        //7.設定(遞增或遞減)切頁元件CSS Style
+        this.refresh_incrementPageControl();
         //10.(遞增或遞減)切頁事件綁定
-        //this.bind_event_incrementPageControl();
+        this.add_searchList_incrementPageControl();
         //11.建立(指定頁)切頁元件(1~10個)
         //this.createSpecifiedPageControl();
         //12.刷新(指定頁)切頁元件CSS與値
@@ -115,8 +113,10 @@ var Grid = function (obj) {
         //14.欄位排序元素click事件綁定
         //this.bind_event_columnSortNode();
         this.set_task_resizeBar();
-        //
+        //Grid (first canvas DOM)事件綁定
         this.bind_event_grid();
+        //切頁控制(second canvas DOM)事件綁定
+        this.bind_event_pageControl();
     };
     /*
         資料表格元件
@@ -180,7 +180,7 @@ var Grid = function (obj) {
         //結果輸出
         main.refineNodeTable = container;
         //加入搜尋點擊列表
-        //main.searchPriorityList.push(main.refineNodeTable);
+        //main.gridSearchPriorityList.push(main.refineNodeTable);
     };
     //2-1.設定欄位順序陣列
     this.set_columnSequenceArray = function () {
@@ -239,7 +239,7 @@ var Grid = function (obj) {
         };
         
         //TODO ... 需加入委派的方法 1.要改sort位置 2.要改每個display的cell的位置和寬度 3.要改slider bar的寬度 後面再加
-        main.searchPriorityList.unshift(main.ResizeBarNodeList);//加入搜尋列表...放前面
+        main.gridSearchPriorityList.unshift(main.ResizeBarNodeList);//加入搜尋列表...放前面
     };
     /*
         切頁元件
@@ -253,32 +253,23 @@ var Grid = function (obj) {
         main.pageControlRootNode = main.shared.createElement('canvas', 'pageControl');
         main.pageControlRootNode.width = main.width;
         main.pageControlRootNode.height = 50;
-        //TODO.... 要建立DOM先
         //建立(遞增或遞減)切頁控制元件
         for (var index = 0; index < main.pageControl.textValue.length; index++) {
             tmp_pageNode = new Cell_canvas(main.pageControl.textValue[index], index);
             tmp_pageObject = main._get_incrementPageControl_Object(tmp_pageNode, index, main.pageControl.textValue[index]);
+            //console.log('設定資訊',tmp_pageObject.nodeCSS.left, tmp_pageObject.nodeCSS.top, tmp_pageObject.nodeCSS.width, tmp_pageObject.nodeCSS.height);
+            tmp_pageNode.set_Style(tmp_pageObject.nodeCSS.left, tmp_pageObject.nodeCSS.top,
+                                   tmp_pageObject.nodeCSS.width, tmp_pageObject.nodeCSS.height,undefined, 1);//set node position and width and height
+            tmp_pageNode.set_info(main.pageControl.textValue[index], index, 1);
             main.pageControl.incrementPageList.push(tmp_pageObject);
         }
-        //Control DOM Collection cast to Array 
-        //tmpNodes = Array.prototype.slice.call(main.pageControlRootNode.incrementPageRoot.children);//
-        //console.log('Control Node', tmpNodes);
-        /*********************************************************/
-        //initial control property
-        /*
-        tmpNodes.forEach(function (current, index, array) {
-            //依據textValue陣列資料値選擇並取得切頁資料物件
-            var data = main._get_incrementPageControl_Object(current, index, textValue[index]);
-            main.pageControl.incrementPageList.push(data);
-        });
-        */
-        console.log('page Control increment', main.pageControl.incrementPageList);
+        //console.log('page Control increment', main.pageControl.incrementPageList);
         main.mainElement.appendChild(main.pageControlRootNode);
     };
     //(私)取得(遞增或遞減)切頁資料物件
     this._get_incrementPageControl_Object = function (node, index, category) {
-        var main = this,
-            data = {
+        const main = this;
+        const data = {
                 index: index,
                 node: node,
                 nodeCSS: {
@@ -288,7 +279,7 @@ var Grid = function (obj) {
                     //"border-radius": "10px",
                     width: 50,
                     height: 50,
-                    top: (main.height + 12),
+                    top: 0,//(main.height + 12),
                     textAlign: "center",
                     //padding:"20px",
                     lineHeight: 50,  //textContent下移
@@ -302,59 +293,64 @@ var Grid = function (obj) {
             case "Status":
                 data.nodeCSS.width = (main.width * 10 / 16);//"100px";
                 data.nodeCSS.left = (+main.pageControl.incrementPageList[index - 1].nodeCSS.width + +main.pageControl.incrementPageList[index - 1].nodeCSS.left);
-                data.nodeCSS["visibility"] = "hidden";//隱藏起來(暫時不用)
+                data.nodeCSS.top = -100;//隱藏用(讓滑鼠座標定位不到)
+                data.nodeCSS.visibility = "hidden";//隱藏起來(暫時不用)
                 break;
             case "-10":
                 data.node.set_img_Path(main.pageControl.defaultImg.left_double_arrow);
-                data.nodeCSS["width"] = (main.width / 16);//分成16等份來切區塊//"50px";
-                data.nodeCSS["left"] = (+main.pageControl.incrementPageList[index - 1].nodeCSS['width'] + +main.pageControl.incrementPageList[index - 1].nodeCSS['left']);
+                data.nodeCSS.width = (main.width / 16);//分成16等份來切區塊//"50px";
+                data.nodeCSS.left = (+main.pageControl.incrementPageList[index - 1].nodeCSS.width + +main.pageControl.incrementPageList[index - 1].nodeCSS.left);
                 break;
             case "-1":
                 data.node.set_img_Path(main.pageControl.defaultImg.left_arrow);
-                data.nodeCSS["width"] = (main.width / 16);//分成16等份來切區塊//"50px";
-                data.nodeCSS["left"] = (+main.pageControl.incrementPageList[index - 1].nodeCSS['width'] + +main.pageControl.incrementPageList[index - 1].nodeCSS['left']);
+                data.nodeCSS.width = (main.width / 16);//分成16等份來切區塊//"50px";
+                data.nodeCSS.left = (+main.pageControl.incrementPageList[index - 1].nodeCSS.width + +main.pageControl.incrementPageList[index - 1].nodeCSS.left);
                 break;
             case "+1":
                 data.node.set_img_Path(main.pageControl.defaultImg.right_arrow);
-                data.nodeCSS["width"] = (main.width / 16);//分成16等份來切區塊//"50px";
-                data.nodeCSS["left"] = (+main.pageControl.incrementPageList[index - 1].nodeCSS['width'] + +main.pageControl.incrementPageList[index - 1].nodeCSS['left']);
+                data.nodeCSS.width = (main.width / 16);//分成16等份來切區塊//"50px";
+                data.nodeCSS.left = (+main.pageControl.incrementPageList[index - 1].nodeCSS.width + +main.pageControl.incrementPageList[index - 1].nodeCSS.left);
                 break;
             case "+10":
                 data.node.set_img_Path(main.pageControl.defaultImg.right_double_arrow);
-                data.nodeCSS["width"] = (main.width / 16);//分成16等份來切區塊//"50px";
-                data.nodeCSS["left"] = (+main.pageControl.incrementPageList[index - 1].nodeCSS['width'] + +main.pageControl.incrementPageList[index - 1].nodeCSS['left']);
+                data.nodeCSS.width = (main.width / 16);//分成16等份來切區塊//"50px";
+                data.nodeCSS.left = (+main.pageControl.incrementPageList[index - 1].nodeCSS.width + +main.pageControl.incrementPageList[index - 1].nodeCSS.left);
                 break;
             case "max":
                 data.node.set_img_Path(main.pageControl.defaultImg.right_end);
-                data.nodeCSS["width"] = (main.width / 16);//分成16等份來切區塊//"50px";
-                data.nodeCSS["left"] = (+main.pageControl.incrementPageList[index - 1].nodeCSS['width'] + +main.pageControl.incrementPageList[index - 1].nodeCSS['left']);
+                data.nodeCSS.width = (main.width / 16);//分成16等份來切區塊//"50px";
+                data.nodeCSS.left = (+main.pageControl.incrementPageList[index - 1].nodeCSS.width + +main.pageControl.incrementPageList[index - 1].nodeCSS.left);
                 break;
             case "min":
                 data.node.set_img_Path(main.pageControl.defaultImg.left_end);
-                data.nodeCSS["width"] = 50;
-                data.nodeCSS["left"] = 0;
+                data.nodeCSS.width = 50;
+                data.nodeCSS.left = 0;
                 break;
             default:
                 throw new Error("Page Control Category not defined");
         }
         return data;
     };
-    //9.刷新(遞增或遞減)切頁元件CSS與値
-    this.set_incrementPageControl_CSS = function () {
-        var main = this;
+    //6.刷新(遞增或遞減)切頁元件
+    this.refresh_incrementPageControl = function () {
+        const main = this;
+        const ctx = main.pageControlRootNode.getContext('2d');
         for (var index = 0; index < main.pageControl.incrementPageList.length; index++) {
-            var cssText = "";
-            for (var propertyName in main.pageControl.incrementPageList[index].nodeCSS) {
-                cssText += propertyName + ":" + main.pageControl.incrementPageList[index].nodeCSS[propertyName] + "; ";
-            }
-            main.pageControl.incrementPageList[index].node.style.cssText = cssText;
-            main.pageControl.incrementPageList[index].node.textContent = main.pageControl.incrementPageList[index].value;
+            //run paint method 
+            main.pageControl.incrementPageList[index].node.save_restore(ctx, main.pageControl.incrementPageList[index].node.draw_image);
         }
     };
-    //10.綁定(遞增或遞減)切頁事件
-    this.bind_event_incrementPageControl = function () {
-        var main = this;
-
+    //7.將遞增或遞減物件的node部分(cell_canvas)抽出丟入切頁搜尋列表
+    this.add_searchList_incrementPageControl = function () {
+        const main = this;
+        //抽出Cell_canvas物件的部分
+        const incrementArr = main.pageControl.incrementPageList.map(function (object) {
+            return object.node;
+        });
+        console.log('increment List', incrementArr);
+        //把Cell物件的陣列集合丟入切頁搜尋列表
+        main.pageSearchPriorityList.push(incrementArr);
+        /*
         main.pageControl.incrementPageList.forEach(function (current, index, array) {
             switch (current.category) {
                 case "min":
@@ -420,12 +416,22 @@ var Grid = function (obj) {
             }
 
         });
+        */
     };
     //11.建立(指定頁)切頁元件(1~10頁)
     this.createSpecifiedPageControl = function () {
-        var main = this,
-            tmpNodes;
+        const main = this;
+        var tmpNode;
         //建立(指定頁)控制元件
+        for (var index = 0; index < 10; index++) {
+            tmp_pageNode = new Cell_canvas('specified', index);
+            tmp_pageObject = main._get_incrementPageControl_Object(tmp_pageNode, index, main.pageControl.textValue[index]);
+            //console.log('設定資訊',tmp_pageObject.nodeCSS.left, tmp_pageObject.nodeCSS.top, tmp_pageObject.nodeCSS.width, tmp_pageObject.nodeCSS.height);
+            tmp_pageNode.set_Style(tmp_pageObject.nodeCSS.left, tmp_pageObject.nodeCSS.top,
+                                   tmp_pageObject.nodeCSS.width, tmp_pageObject.nodeCSS.height, undefined, 1);//set node position and width and height
+            tmp_pageNode.set_info(main.pageControl.textValue[index], index, 1);
+            main.pageControl.incrementPageList.push(tmp_pageObject);
+        }
         main.pageControlRootNode.specifiedPageRoot = main.new.create('div', 10, 'page_control');
         //Control DOM Collection cast to Array 
         tmpNodes = Array.prototype.slice.call(main.pageControlRootNode.specifiedPageRoot.children);//
@@ -493,6 +499,72 @@ var Grid = function (obj) {
         });
         //console.log('page Control[specifiedPageList]:', main.pageControl.specifiedPageList);
         main.mainElement.appendChild(main.pageControlRootNode.specifiedPageRoot);//附加到主DOM上
+    };
+    //(私)取得(指定)切頁資料物件
+    this._get_specifiedPageControl_Object = function (node, index, category) {
+        var data = new function SpecifiedObject (){
+            //物件索引
+            this.index = index;
+            //DOM元素
+            this.node = node;
+            //DOM對應的style設定
+            this.nodeCSS = {
+                "position": "absolute",
+                "background-color": "#e8f3f3",
+                "border": "1px solid white",
+                //border-radius": "10px",
+                "width": (main.width / 16) + 'px',
+                "height": "50px",
+                "left": +main.pageControl.incrementPageList[2].nodeCSS.left + (main.width / 16 * (index + 1)),
+                "top": 0,
+                "text-align": "center",
+                //padding:"20px",
+                "line-height": "50px",  //下移
+                "visibility": "visible"
+            };
+            //物件格式
+            this.type = category;//"specified_page";
+            //選擇flag
+            this.selected = false;
+            //頁數
+            this.pageIndex = (index + 1);//初始的預設値: 1 ~ 10
+            if(!prototypeFlag){
+                SpecifiedObject.prototype = new function () {
+                    //執行prototype的flag:用來判定只執行一次
+                    this.prototypeFlag = true;
+                    //set selected flag func
+                    this.set_select = function (flag) {
+                        this.selected = flag, this._change_backgroundColorStyle(this.selected);//依據flag變更css style
+                    };
+                    this.get_select = function () {
+                        return this.selected;
+                    };
+                    //設定指定頁物件的pageIndex屬性
+                    this.set_pageIndex = function (pageIndex) {
+                        //檢查是否為數字
+                        var page = isNaN(Number(pageIndex)) ? undefined : pageIndex;
+                        this.pageIndex = page;
+                        this.node.textContent = this.pageIndex;
+                        //依據pageIndex屬性設定:若非數字則隱藏DOM元素
+                        this._change_visibility(this.pageIndex);
+                    };
+                    //取得指定頁物件的pageIndex屬性
+                    this.get_pageIndex = function () {
+                        return this.pageIndex;
+                    };
+                    //(private)chagne self css style
+                    this._change_backgroundColorStyle = function (flag) {
+                        this.nodeCSS.backgroundColor = !!flag ? "#3399FF" : "rgb(232, 243, 243)";
+                        //this.node.set_Style.backgroundColor = this.nodeCSS.backgroundColor;
+                    };
+                    //(private)change DOM visibility style when visible is true or hidden
+                    this._change_visibility = function (visible) {
+                        this.node.style['visibility'] = !!visible ? "visible" : "hidden";
+                    };
+                }
+            }
+        };
+        return data;
     };
     //12.刷新(指定頁)切頁元件CSS與値
     this.set_specifiedPageControl_CSS = function () {
@@ -950,7 +1022,7 @@ var Grid = function (obj) {
             //current.taskFuncList.push(main.change_Cell_positionAndSize);
         });
     }
-    //資料顯示部分綁定事件
+    //資料顯示部分綁定事件(Closure)
     this.bind_event_grid = function () {
         const main = this;
         var ctx = main.gridElement.getContext('2d');
@@ -958,14 +1030,16 @@ var Grid = function (obj) {
         var selectedObject;
         var startX, startY, endX, endY;
         main.gridElement.onmousedown = function (e) {
+            e.stopPropagation();
             if (!flag && (flag = true)) {
                 startX = e.layerX;
                 startY = e.layerY;
                 //依據座標檢查搜尋列表並回傳點擊的物件(沒找到則為undefined)
-                selectedObject = main.searchObject(main.searchPriorityList, startX, startY);
+                selectedObject = main.searchObject(main.gridSearchPriorityList, startX, startY);
             }
-        };
+        };//search object when mouse down 
         main.gridElement.onmousemove = function (e) {
+            e.stopPropagation();
             if (flag) {
                 endX = e.layerX;
                 endY = e.layerY;
@@ -996,16 +1070,19 @@ var Grid = function (obj) {
                     main.refresh_allDisplayElement();
                 }
             }
-        };
-        document.addEventListener('mousemove', function changeMouseCursor(e) {
-            if (!!main.searchObject(main.searchPriorityList, e.layerX, e.layerY)) {
+        };//do selected object task
+        main.gridElement.addEventListener('mousemove', function changeMouseCursor(e) {
+            e.stopPropagation();
+            //console.log('currentTarget', e.currentTarget);
+            if (!!main.searchObject(main.gridSearchPriorityList, e.layerX, e.layerY)) {
                 main.gridElement.style.cursor = "col-resize";
             }
             else {
                 main.gridElement.style.cursor = "";
             }
-        }, false);
+        }, false);//just change cursor
         main.gridElement.onmouseup = main.gridElement.onmouseleave = function (e) {
+            e.stopPropagation();
             if (flag && !(flag = false)) {
                 console.log('滑鼠閃人', selectedObject);
                 e.target.style.cursor = "";
@@ -1026,26 +1103,56 @@ var Grid = function (obj) {
                     main.refresh_allDisplayElement();
                 }
             }
-        }
+        };//do selected object task
     };
-    //遞迴檢查所有陣列中的陣列(一找到就不跑其他陣列的搜尋)
-    this.searchObject = function recursive(that, x, y) {
+    //切頁元件綁定事件(Closure)
+    this.bind_event_pageControl = function () {
+        const main = this;
+        var ctx = main.gridElement.getContext('2d');
+        //var flag = false;
+        var selectedObject;
+        //var startX, startY, endX, endY;
+        main.pageControlRootNode.onclick = function (e) {
+            e.stopPropagation();
+            
+                //startX = e.layerX;
+                //startY = e.layerY;
+                //依據座標檢查搜尋列表並回傳點擊的物件(沒找到則為undefined)
+                selectedObject = main.searchObject(main.pageSearchPriorityList, e.layerX, e.layerY);
+                console.log('click', e.layerX, e.layerY, selectedObject);
+            
+        };//search object when mouse click 
+        main.pageControlRootNode.addEventListener('mousemove', function changeMouseCursor(e) {
+            e.stopPropagation();
+            //console.log('currentTarget', e.currentTarget);
+            if (!!main.searchObject(main.pageSearchPriorityList, e.layerX, e.layerY)) {
+                main.pageControlRootNode.style.cursor = "pointer";
+            }
+            else {
+                main.pageControlRootNode.style.cursor = "";
+            }
+        }, false);//just change cursor
+        
+    };
+    //遞迴檢查所有陣列中的陣列(若找到就回傳並離開遞迴搜尋)
+    this.searchObject = function recursive(arr, x, y) {
         //console.log('testRecursive',that, x, y);
         
-        if (Array.isArray(that)) {
-            for (var i = 0; i < that.length; i++) {
-                if (Array.isArray(that[i])) {
+        if (Array.isArray(arr)) {
+            for (var i = 0; i < arr.length; i++) {
+                if (Array.isArray(arr[i])) {
                     //console.log('進入遞迴');
-                    var result = recursive(that[i], x, y);//不能使用const,會無法改變result,造成搜到底 
+                    var result = recursive(arr[i], x, y);//不能使用const,會無法改變result,造成搜到底 
                     //找到就回傳物件
                     if (!!result) {
                         return result;
                     }
                 }
                 else {
-                    if (that[i].hitCheck(x, y)) {
-                        console.log('點了誰', that[i]);
-                        return that[i];
+                    //check coordinate
+                    if (arr[i].hitCheck(x, y)) {
+                        console.log('誰符合條件', arr[i]);
+                        return arr[i];
                     }
                     //else {
                     //    console.log('None');
@@ -1527,12 +1634,12 @@ Cell_canvas.prototype = new function Cell_prototype() {
         const that = this;
         const img = new Image();
         const data = imagePath || that.imagePath;//若有輸入用輸入的或預設的
-        //看要不要判斷圖片路徑是否存在
-        img.src = that.imagePath;
         img.onload = function draw(e) {
-            console.log("載入完成,開始畫圖");
+            //console.log("載入完成,開始畫圖", that.style.left, that.style.top, that.style.width, that.style.height);
             ctx.drawImage(img, that.style.left, that.style.top, that.style.width, that.style.height);
         };
+        //看要不要判斷圖片路徑是否存在
+        img.src = that.imagePath;
     };
     //畫布位移
     this.translatePosition = function (ctx, trans_x, trans_y) {
@@ -1544,7 +1651,7 @@ Cell_canvas.prototype = new function Cell_prototype() {
         }
     };
     //隔離畫布狀態並執行操作方法,操作方法指標依序帶入參數
-    this.save_restore = function (ctx) {
+    this.save_restore = function (ctx,args) {
         ctx.save();//產生新的stack隔離上次的Style設定
         for (var i = 1; i < arguments.length; i++) {
             if (arguments[i].constructor !== Function) {
