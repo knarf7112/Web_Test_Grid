@@ -98,7 +98,7 @@ var Grid = function (obj) {
         //10.(遞增或遞減)切頁事件綁定
         this.add_searchList_incrementPageControl();
         //11.建立(指定頁)切頁元件(1~10個)
-        //this.createSpecifiedPageControl();
+        this.createSpecifiedPageControl();
         //12.刷新(指定頁)切頁元件CSS與値
         //this.set_specifiedPageControl_CSS();
         //13.綁定(指定頁)切頁事件
@@ -425,83 +425,18 @@ var Grid = function (obj) {
         //建立(指定頁)控制元件
         for (var index = 0; index < 10; index++) {
             tmp_pageNode = new Cell_canvas('specified', index);
-            tmp_pageObject = main._get_incrementPageControl_Object(tmp_pageNode, index, main.pageControl.textValue[index]);
+            tmp_pageObject = main._get_specifiedPageControl_Object(tmp_pageNode, index, main.pageControl.textValue[index]);
             //console.log('設定資訊',tmp_pageObject.nodeCSS.left, tmp_pageObject.nodeCSS.top, tmp_pageObject.nodeCSS.width, tmp_pageObject.nodeCSS.height);
             tmp_pageNode.set_Style(tmp_pageObject.nodeCSS.left, tmp_pageObject.nodeCSS.top,
                                    tmp_pageObject.nodeCSS.width, tmp_pageObject.nodeCSS.height, undefined, 1);//set node position and width and height
             tmp_pageNode.set_info(main.pageControl.textValue[index], index, 1);
-            main.pageControl.incrementPageList.push(tmp_pageObject);
+            main.pageControl.specifiedPageList.push(tmp_pageObject);
         }
-        main.pageControlRootNode.specifiedPageRoot = main.new.create('div', 10, 'page_control');
-        //Control DOM Collection cast to Array 
-        tmpNodes = Array.prototype.slice.call(main.pageControlRootNode.specifiedPageRoot.children);//
-        //console.log('Control Node', tmpNodes);
-        //initial control property
-        tmpNodes.forEach(function (current, index, array) {
-
-            var data = {
-                //物件索引
-                index: index,
-                //DOM元素
-                node: current,
-                //DOM對應的style設定
-                nodeCSS: {
-                    "position": "absolute",
-                    "background-color": "#e8f3f3",
-                    "border": "1px solid white",
-                    //border-radius": "10px",
-                    "width": (main.width / 16) + 'px',
-                    "height": "50px",
-                    "left": +main.pageControl.incrementPageList[2].nodeCSS.left.split('px')[0] + (main.width / 16 * (index + 1)) + "px",
-                    "top": main.height + 12 + "px",
-                    "text-align": "center",
-                    //padding:"20px",
-                    "line-height": "50px",  //下移
-                    "visibility": "visible"
-                },
-                //選擇flag
-                selected: false,
-                //頁數
-                pageIndex: (index + 1),//初始的預設値: 1 ~ 10
-                //物件格式
-                type: "page_control",
-                //set selected flag func
-                set_select: function (flag) {
-                    this.selected = flag, this._change_backgroundColorStyle(this.selected);//依據flag變更css style
-                },
-                get_select: function () {
-                    return this.selected;
-                },
-                //設定指定頁物件的pageIndex屬性
-                set_pageIndex: function (pageIndex) {
-                    //檢查是否為數字
-                    var page = isNaN(Number(pageIndex)) ? undefined : pageIndex;
-                    this.pageIndex = page;
-                    this.node.textContent = this.pageIndex;
-                    //依據pageIndex屬性設定:若非數字則隱藏DOM元素
-                    this._change_visibility(this.pageIndex);
-                },
-                //取得指定頁物件的pageIndex屬性
-                get_pageIndex: function () {
-                    return this.pageIndex;
-                },
-                //(private)chagne self css style
-                _change_backgroundColorStyle: function (flag) {
-                    this.nodeCSS['backgroundColor'] = !!flag ? "#3399FF" : "rgb(232, 243, 243)";
-                    this.node.style['backgroundColor'] = this.nodeCSS['backgroundColor'];
-                },
-                //(private)change DOM visibility style when visible is true or hidden
-                _change_visibility: function (visible) {
-                    this.node.style['visibility'] = !!visible ? "visible" : "hidden";
-                }
-            };
-            main.pageControl.specifiedPageList.push(data);//物件注入指定頁屬性(陣列)
-        });
-        //console.log('page Control[specifiedPageList]:', main.pageControl.specifiedPageList);
-        main.mainElement.appendChild(main.pageControlRootNode.specifiedPageRoot);//附加到主DOM上
+        console.log('specified page control', main.pageControl.specifiedPageList);
     };
     //(私)取得(指定)切頁資料物件
     this._get_specifiedPageControl_Object = function (node, index, category) {
+        const main = this;
         var data = new function SpecifiedObject (){
             //物件索引
             this.index = index;
@@ -513,8 +448,8 @@ var Grid = function (obj) {
                 "background-color": "#e8f3f3",
                 "border": "1px solid white",
                 //border-radius": "10px",
-                "width": (main.width / 16) + 'px',
-                "height": "50px",
+                "width": (main.width / 16) ,
+                "height": 50,
                 "left": +main.pageControl.incrementPageList[2].nodeCSS.left + (main.width / 16 * (index + 1)),
                 "top": 0,
                 "text-align": "center",
@@ -528,7 +463,8 @@ var Grid = function (obj) {
             this.selected = false;
             //頁數
             this.pageIndex = (index + 1);//初始的預設値: 1 ~ 10
-            if(!prototypeFlag){
+            
+            if(!this.prototypeFlag){
                 SpecifiedObject.prototype = new function () {
                     //執行prototype的flag:用來判定只執行一次
                     this.prototypeFlag = true;
