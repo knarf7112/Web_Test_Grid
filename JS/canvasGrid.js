@@ -599,69 +599,61 @@ var Grid = function (obj) {
         });
     };
     //
-    this.click_page = function (typeName) {
+    this.click_page = function (obj) {
         const main = this;
-        switch (typeName) {
+        if (typeof (obj.type) !== 'string') {
+            throw TypeError('[click_page]Error: obj.type is not string:' + typeof (obj.type));
+        }
+        switch (obj.type) {
             case "min":
-                current.node.onclick = function (e) {
-                    e.stopPropagation();
                     //
                     main.refresh_specifiedPageControl_pageIndex(1);
                     //main.pageControl.incrementPageList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
                     console.log('切頁:min');
-                };
                 break;
             case "-10":
-                current.node.onclick = function (e) {
-                    e.stopPropagation();
                     var currentPage = ((main.currentPage - 10) >= 1) ? (main.currentPage - 10) : 1;
                     main.refresh_specifiedPageControl_pageIndex(currentPage);
                     //main.display_data(main.currentPage);
                     //main.pageControl.incrementPageList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
                     console.log('切頁: -10');
-                };
                 break;
             case "-1":
-                current.node.onclick = function (e) {
-                    e.stopPropagation();
                     var currentPage = ((main.currentPage - 1) >= 1) ? (main.currentPage - 1) : 1;
                     main.refresh_specifiedPageControl_pageIndex(currentPage);
                     //main.display_data(main.currentPage);
                     //main.pageControl.incrementPageList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
                     console.log('切頁: -1');
-                };
                 break;
             case "+1":
-                current.node.onclick = function (e) {
-                    e.stopPropagation();
                     var currentPage = ((main.currentPage + 1) <= (main.refinedData.length - 1)) ? (main.currentPage + 1) : (main.refinedData.length - 1);
                     console.log('+1', currentPage);
                     main.refresh_specifiedPageControl_pageIndex(currentPage);
                     //main.display_data(main.currentPage);
                     //main.pageControl.incrementPageList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
                     console.log('切頁: +1');
-                };
                 break;
             case "+10":
-                current.node.onclick = function (e) {
-                    e.stopPropagation();
                     var currentPage = ((main.currentPage + 10) <= (main.refinedData.length - 1)) ? (main.currentPage + 10) : (main.refinedData.length - 1);
                     main.refresh_specifiedPageControl_pageIndex(currentPage);
                     //main.display_data(main.currentPage);
                     //main.pageControl.incrementPageList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
                     console.log('切頁: +10');
-                };
                 break;
             case "max":
-                current.node.onclick = function (e) {
-                    e.stopPropagation();
                     var currentPage = (main.refinedData.length - 1);
                     main.refresh_specifiedPageControl_pageIndex(currentPage);
                     //main.display_data(main.currentPage);
                     //main.pageControl.incrementPageList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
                     console.log('切頁:max');
-                };
+                    break;
+            case "specified_page":
+                var currentPage = main.pageControl.specifiedPageList[obj.index].pageIndex;
+                main.refresh_specifiedPageControl_pageIndex(currentPage);
+                console.log('指定切頁', main.pageControl.specifiedPageList[obj.index].pageIndex);
                 break;
+            default:
+                throw Error('[click_page]Error: type not defined => ' + typeName);
         }
     };
     /*
@@ -1156,7 +1148,9 @@ var Grid = function (obj) {
             //依據座標檢查搜尋列表並回傳點擊的物件(沒找到則為undefined)
             selectedObject = main.searchObject(main.pageSearchPriorityList, e.layerX, e.layerY);
             console.log('click', e.layerX, e.layerY, selectedObject);
-
+            if(!!selectedObject){
+                main.click_page(selectedObject);
+            }
             
         };//search object when mouse click 
         main.pageControlRootNode.addEventListener('mousemove', function changeMouseCursor(e) {
