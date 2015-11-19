@@ -803,10 +803,14 @@ var Grid = function (obj) {
     */
     //12.建立欄位排序元件
     this.createSortNodeList = function () {
-        var main = this,
-            tmpNodes;
+        const main = this;
+        var tmp_Node;//cell object
+        var tmp_Object;//outside object
         //create column sort elements
-        main.columnSortedRootNode = main.new.create('div', main.column, 'triangle_up');
+        for (var index = 0; index < main.column; index++) {
+            tmp_Node = new Cell_canvas('sort_triangle', index);
+            
+        }
 
         tmpNodes = Array.prototype.slice.call(main.columnSortedRootNode.children);//
 
@@ -1215,8 +1219,12 @@ Grid.prototype.shared = new function Grid_prototype() {
     Component Part
 */
 //triangle
-function Triangle(name, settings, backgroundColor) {
+function Triangle(name, index, settings, type, backgroundColor) {
+    //名稱
     this.name = name;
+    //索引
+    this.index = index;
+    //位置資訊(永久)
     this.settings = {
         x1: settings.x1,
         y1: settings.y1,
@@ -1225,6 +1233,9 @@ function Triangle(name, settings, backgroundColor) {
         x3: settings.x3,
         y3: settings.y3
     };
+    //種類
+    this.type = type;
+    //位置資訊(暫時)
     this.tempSettings = {
         x1: 0,
         y1: 0,
@@ -1233,8 +1244,8 @@ function Triangle(name, settings, backgroundColor) {
         x3: 0,
         y3: 0
     };
+    //背景色
     this.backgroundColor = backgroundColor;
-    this.type = "triangle";
 };
 Triangle.prototype = new function Triangle_prototype(){
     //變更位置
@@ -1291,7 +1302,136 @@ Triangle.prototype = new function Triangle_prototype(){
                    that.tempSettings.x3),
                    (that.settings.y3 +
                    that.tempSettings.y1));
-        //ctx.closePath();
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+    };
+    //檢查是否在物件的範圍內
+    this.hitCheck = function (x, y) {
+        const that = this;
+        //公式
+        var a = (that.settings.x1 + that.tempSettings.x1) *
+            ((that.settings.y2 + that.tempSettings.y2) -
+             (that.settings.y3 + that.tempSettings.y3)) +
+            (that.settings.x2 + that.tempSettings.x2) *
+            ((that.settings.y3 + that.tempSettings.y3) -
+             (that.settings.y1 + that.tempSettings.y1)) +
+            (that.settings.x3 + that.tempSettings.x3) *
+            ((that.settings.y1 + that.tempSettings.y1) -
+             (that.settings.y2 + that.tempSettings.y2));
+        var b = (that.settings.x1 - that.tempSettings.x1) *
+            (y - (that.settings.y3 + that.tempSettings.y3)) +
+            x * ((that.settings.y3 + that.tempSettings.y3) -
+               (that.settings.y1 + that.tempSettings.y1)) +
+            (that.settings.x3 + that.tempSettings.x3) *
+            ((that.settings.y1 + that.tempSettings.y1) - y);
+        var c = (that.settings.x1 - that.tempSettings.x1) *
+            ((that.settings.y2 + that.tempSettings.y2) - y) +
+            (that.settings.x2 + that.tempSettings.x2) *
+            (y - (that.settings.y1 + that.tempSettings.y1)) +
+            x * ((that.settings.y1 + that.tempSettings.y1) -
+               (that.settings.y2 + that.tempSettings.y2));
+
+        /* //未加變化量
+        var a = that.settings.x1*(that.settings.y2 - that.settings.y3) + that.settings.x2*(that.settings.y3 - that.settings.y1) + that.settings.x3*(that.settings.y1 - that.settings.y2);
+        var b = that.settings.x1*(y - that.settings.y3) + x*(that.settings.y3 - that.settings.y1) + that.settings.x3*(that.settings.y1 -y);
+        var c = that.settings.x1*(that.settings.y2 - y) + that.settings.x2*(y - that.settings.y1) + x*(that.settings.y1 - that.settings.y2);
+        */
+        //條件
+        if (((b + c) / a) < 1 && (b / a) > 0 && (c / a) > 0) {
+            return true;
+        }
+        else {
+            console.log('沒點到', a, b, c);
+        }
+    };
+};
+//Regular Triangle 正三角形(只要給x,y跟邊長)
+function RegularTriangle(name, index, settings, type, backgroundColor) {
+    //名稱
+    this.name = name;
+    //索引
+    this.index = index;
+    //位置資訊(永久)
+    this.settings = {
+        x1: settings.x1,
+        y1: settings.y1,
+        x2: settings.x2,
+        y2: settings.y2,
+        x3: settings.x3,
+        y3: settings.y3
+    };
+    //種類
+    this.type = type;
+    //位置資訊(暫時)
+    this.tempSettings = {
+        x1: 0,
+        y1: 0,
+        x2: 0,
+        y2: 0,
+        x3: 0,
+        y3: 0
+    };
+    //背景色
+    this.backgroundColor = backgroundColor;
+};
+RegularTriangle.prototype = new function RegularTriangle_prototype() {
+    this.constructor = RegularTriangle;
+    //變更位置
+    this.set_position = function (x, y, forever) {
+        const that = this;
+        //非永有改變
+        if (!forever) {
+            that.tempSettings.x1 = x;
+            that.tempSettings.x2 = x;
+            that.tempSettings.x3 = x;
+            that.tempSettings.y1 = y;
+            that.tempSettings.y2 = y;
+            that.tempSettings.y3 = y;
+        }
+        else {
+            that.settings.x1 += x;
+            that.settings.x2 += x;
+            that.settings.x3 += x;
+            that.settings.y1 += y;
+            that.settings.y2 += y;
+            that.settings.y3 += y;
+            that.tempSettings.x1 = 0;
+            that.tempSettings.x2 = 0;
+            that.tempSettings.x3 = 0;
+            that.tempSettings.y1 = 0;
+            that.tempSettings.y2 = 0;
+            that.tempSettings.y3 = 0;
+        }
+    };
+    //變更大小
+    this.set_size = function (x, y, forever) {
+
+    };
+    //清除三角  TODO ... 有殘餘的邊
+    this.clear = function (ctx, color) {
+        const that = this;
+        that.draw(ctx, color);
+    };
+    //畫圖
+    this.draw = function (ctx, color) {
+        const that = this;
+        ctx.save();
+        ctx.fillStyle = color || that.color;
+        ctx.beginPath();
+        ctx.moveTo((that.settings.x1 +
+                    that.tempSettings.x1),
+                   (that.settings.y1 +
+                    that.tempSettings.y1));
+        ctx.lineTo((that.settings.x2 +
+                   that.tempSettings.x2),
+                   (that.settings.y2 +
+                   that.tempSettings.y2));
+        ctx.lineTo((that.settings.x3 +
+                   that.tempSettings.x3),
+                   (that.settings.y3 +
+                   that.tempSettings.y1));
+        ctx.closePath();
         ctx.fill();
         ctx.restore();
     };
@@ -1899,3 +2039,67 @@ function refinedFunction(data) {
     }
     return result;
 };
+//正三角用的設定
+function RegularTriangleSettings(x, y, length, direction) {
+    this.x1 = x;
+    this.y1 = x;
+    this.length = length;
+    this.direction = !!direction ? 'positive' : 'negative';
+    this.x2 = this._get_x2();
+    this.y2 = this._get_y2();
+    this.x3 = this._get_x3();
+    this.y3 = this._get_y3();
+    
+};
+RegularTriangleSettings.prototype = new function () {
+    //變更x1
+    this.set_x1 = function (x1) {
+        this.x1 = x1;
+        this._set_x2();
+        this._set_x3();
+    };
+    //變更y1
+    this.set_y1 = function (y1) {
+        this.y1 = y1;
+        this._set_y2();
+        this._set_y3();
+    };
+    this._get_x2 = function () {
+        return this.x1 + this.length;
+    };
+    this._set_x2 = function () {
+        this.x2 = this.x1 + this.length;
+    };
+    this._get_y2 = function () {
+        return this.y1;
+    };
+    this._set_y2 = function () {
+        this.y2 = this.y1;
+    };
+    this._get_x3 = function () {
+        return this.x1 + (this.length / 2);
+    };
+    this._set_x3 = function () {
+        this.x3 = this.x1 + (this.length / 2);
+    };
+    this._get_y3 = function () {
+        const that = this;
+        var y3;
+        if (that.direction === 'postive') {
+            y3 = that.y1 - Math.round(that.length * Math.sqrt(3));//y3的高(正三角) = y1 - 邊長 * 根號3
+        }
+        else {
+            y3 = that.y1 + Math.round(that.length * Math.sqrt(3));//y3的高(反三角) = y1 + 邊長 * 根號3
+        }
+        return y3;
+    };
+    this._set_y3 = function () {
+        const that = this;
+        if (that.direction === 'postive') {
+            that.y3 = that.y1 - Math.round(that.length * Math.sqrt(3));//y3的高(正三角) = y1 - 邊長 * 根號3
+        }
+        else {
+            that.y3 = that.y1 + Math.round(that.length * Math.sqrt(3));//y3的高(反三角) = y1 + 邊長 * 根號3
+        }
+    };
+}
