@@ -107,7 +107,7 @@ var Grid = function (obj) {
         //11.欄位拖曳資料交換事件綁定--作欄與欄資料交換
         //this.event_bind_header();
         //12.建立欄位排序元件
-        //this.createSortNodeList();
+        this.createSortNodeList();
         //13.設定欄位排序元件CSS
         //this.set_columnSortNode_CSS();
         //14.欄位排序元素click事件綁定
@@ -806,12 +806,16 @@ var Grid = function (obj) {
         const main = this;
         var tmp_Node;//cell object
         var tmp_Object;//outside object
+        var settings;
+        console.log('[ResizeBarNodeList]', main.ResizeBarNodeList);
         //create column sort elements
         for (var index = 0; index < main.column; index++) {
-            tmp_Node = new Cell_canvas('sort_triangle', index);
+            settings = new RegularTriangleSettings(main.ResizeBarNodeList[index].x, 10, 5, false);
+            tmp_Node = new RegularTriangle('column_sort', index, settings, 'column_sort', 'red');
+
             
         }
-
+        /*
         tmpNodes = Array.prototype.slice.call(main.columnSortedRootNode.children);//
 
         //set property into main object //iterator
@@ -837,8 +841,9 @@ var Grid = function (obj) {
             };
             main.columnSortNodeList.push(data);//加入columnSortNodeList陣列
         });
+        */
         //輸出到Grid元素上
-        main.gridElement.appendChild(main.columnSortedRootNode);
+        //main.gridElement.appendChild(main.columnSortedRootNode);
     };
     //(私)數據注入時,刷新columnSortName屬性值
     this._refresh_columnSortName = function () {
@@ -1517,7 +1522,7 @@ function Rectangle(name, index, settings, type, backgroundColor, border) {
     this.childrenArray;
 };
 Rectangle.prototype = new function Rect_prototype(){
-    //位置設置
+    //位置設置(包含子物件連動的部分)
     this.set_position = function (x, y, forever, firstObjName) {
         const that = this;
         const objectName = firstObjName;
@@ -1533,6 +1538,7 @@ Rectangle.prototype = new function Rect_prototype(){
             that.tempSettings.y = 0;
 
         }
+        //flag判定是否自動更新自身的子陣列與下一個連動的物件
         if (!!that.auto_changeNextObj) {
             //attatch on this object(this bar's children)
             if (Array.isArray(that.childrenArray) && that.childrenArray.length != 0) {
@@ -1587,11 +1593,10 @@ Rectangle.prototype = new function Rect_prototype(){
         this.forwardObj = obj;
     };
     //設置附屬於物件的陣列物件
-    this.set_childrenArray = function(array){
-        if (Array.isArray(Array)) {
-            throw new TypeError('[set_childrenArray] Error: param Type is not Array');
-        }
-        this.childrenArray = array;
+    this.set_childrenArray = function (array) {
+        const that = this;
+        that.childrenArray = Array.isArray(that.childrenArray) ? that.childrenArray : [];
+        that.childrenArray = that.childrenArray.concat(array);
     };
     //設置任務指標
     this.set_task = function(tasks){
@@ -2086,20 +2091,28 @@ RegularTriangleSettings.prototype = new function () {
         const that = this;
         var y3;
         if (that.direction === 'postive') {
-            y3 = that.y1 - Math.round(that.length * Math.sqrt(3));//y3的高(正三角) = y1 - 邊長 * 根號3
+            y3 = that.y1 - Math.round((that.length / 2) * Math.sqrt(3));//y3的高(正三角) = y1 - 邊長 * 根號3
         }
         else {
-            y3 = that.y1 + Math.round(that.length * Math.sqrt(3));//y3的高(反三角) = y1 + 邊長 * 根號3
+            y3 = that.y1 + Math.round((that.length / 2) * Math.sqrt(3));//y3的高(反三角) = y1 + 邊長 * 根號3
         }
         return y3;
     };
     this._set_y3 = function () {
         const that = this;
         if (that.direction === 'postive') {
-            that.y3 = that.y1 - Math.round(that.length * Math.sqrt(3));//y3的高(正三角) = y1 - 邊長 * 根號3
+            that.y3 = that.y1 - Math.round((that.length / 2) * Math.sqrt(3));//y3的高(正三角) = y1 - 邊長 * 根號3
         }
         else {
-            that.y3 = that.y1 + Math.round(that.length * Math.sqrt(3));//y3的高(反三角) = y1 + 邊長 * 根號3
+            that.y3 = that.y1 + Math.round((that.length / 2) * Math.sqrt(3));//y3的高(反三角) = y1 + 邊長 * 根號3
+        }
+    };
+    this.set_direction = function (isPositive) {
+        if (!!isPositive) {
+            this.direction = 'positive';
+        }
+        else {
+            this.direction = 'negative';
         }
     };
 }
