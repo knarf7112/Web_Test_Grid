@@ -108,10 +108,10 @@ var Grid = function (obj) {
         //this.event_bind_header();
         //12.建立欄位排序元件
         this.createSortNodeList();
-        //13.設定欄位排序元件CSS
-        //this.set_columnSortNode_CSS();
+        //13.刷新欄位排序元件
+        //this.refresh_columnSortNode();
         //14.欄位排序元素click事件綁定
-        //this.bind_event_columnSortNode();
+        this.bind_event_columnSortNode();
         this.set_task_resizeBar();
         //Grid (first canvas DOM)事件綁定
         this.bind_event_grid();
@@ -557,6 +557,9 @@ var Grid = function (obj) {
         main.pageControl.specifiedPageList[(main.currentPage - 1) % 10].node.refresh_textContent(ctx);
         //刷新顯示資料
         main.display_data(main.currentPage);
+        //刷新排序元件
+        main.refresh_columnSortNode();
+
     };
     //10.將指定頁物件的node部分(cell_canvas)抽出丟入切頁搜尋列表
     this.add_searchList_specifiedPageControl = function () {
@@ -673,6 +676,7 @@ var Grid = function (obj) {
             that.pageControl.specifiedPageList[that.currentPage - 1].set_select(true);//變更指定頁物件的select屬性並變更背景
             that.refresh_specifiedPageControl();
             that._refresh_columnSortName();//
+            that.refresh_columnSortNode();
             //頁狀態物件的元素屬性(node => DOM)
             that.pageControl.incrementPageList[3].node.textContent = that.currentPage + "/" + (that.refinedData.length - 1);
         }
@@ -804,121 +808,93 @@ var Grid = function (obj) {
     //12.建立欄位排序元件
     this.createSortNodeList = function () {
         const main = this;
+        const type = 'column_sort';
+        const backgroundColor = 'red';
         var tmp_Node;//cell object
         var tmp_Object;//outside object
         var settings;
-        console.log('[ResizeBarNodeList]', main.ResizeBarNodeList);
+        
         //create column sort elements
         for (var index = 0; index < main.column; index++) {
-            settings = new RegularTriangleSettings(main.ResizeBarNodeList[index].x, 10, 5, false);
-            tmp_Node = new RegularTriangle('column_sort', index, settings, 'column_sort', 'red');
-
-            
+            //1.新增排序元件的基本形狀屬性(正三角)
+            settings = new Settings_RegularTriangle(main.ResizeBarNodeList[index].settings.x - 18, 10, 15, false);
+            //2.新增排序元件
+            tmp_Node = new RegularTriangle(type, index, settings, type, backgroundColor);
+            //加入排序屬性陣列
+            main.columnSortNodeList.push(tmp_Node);
+            //加入縮放元件的子陣列屬性
+            main.ResizeBarNodeList[index].set_childrenArray(tmp_Node);
         }
-        /*
-        tmpNodes = Array.prototype.slice.call(main.columnSortedRootNode.children);//
-
-        //set property into main object //iterator
-        tmpNodes.forEach(function (currentElement, index, array) {
-            var default_left = ((main.columnWidth * (index + 1))) - 15,//每個sort node的預設 X axis 位置
-            //建立縮放元素(flexi bar)的資料結構
-            data = {
-                index: index,               //第幾條
-                node: currentElement,       //DOM元素
-                default_left: default_left,
-                nodeCSS: {                  //設定用CSS
-                    position: "absolute",
-                    //border: "1px solid yellow", //只是用來看元件位置
-                    //backgroundColor: "red",
-                    //width: "10px",
-                    //height: "10px",
-                    left: default_left + "px",
-                    top: "5px"
-                },
-                columnSortName: "",
-                dataType: "",
-                type: "column_sort"            //物件種類
-            };
-            main.columnSortNodeList.push(data);//加入columnSortNodeList陣列
-        });
-        */
-        //輸出到Grid元素上
-        //main.gridElement.appendChild(main.columnSortedRootNode);
+        //console.log('[ResizeBarNodeList]', main.ResizeBarNodeList);
     };
-    //(私)數據注入時,刷新columnSortName屬性值
+    //(私)數據注入時,刷新columnSortName屬性值(設定欄位資料種類)
     this._refresh_columnSortName = function () {
         var main = this,
             dataType = ['number', 'number', 'number', 'number', 'number'];   //kai的json數據
         //['number', 'date', 'string', 'string', 'string'];  //借來的json數據
         main.columnSortNodeList.forEach(function (currentElement, index, array) {
+            //新增排序元件屬性(欄位名稱)
             currentElement.columnSortName = main.refineNodeTable[main.columnSequence[index]][0].value;//取得json物件的屬性名稱(當排序的依據條件)
+            //設定欄位資料種類(排序時的依據)
             currentElement.dataType = dataType[index];
         });
     };
     //13.刷新所有排序欄位元素的CSS或指定的CSS屬性
-    this.set_columnSortNode_CSS = function (mainObj, columnIndex, propertyName) {
-        var main = this;
-        var main = mainObj || this;
-
+    this.refresh_columnSortNode = function () {
+        const main = this;
+        const ctx = main.gridElement.getContext('2d');
         //設定所有縮放元素,若有指定起始index則取指定値當起始値
-        for (var index = columnIndex || 0; index < main.columnSortNodeList.length; index++) {
-            //若有指定設定名稱
-            if (!!propertyName) {
-                main.columnSortNodeList[index].node.style[propertyName] = main.columnSortNodeList[index].nodeCSS[propertyName];
-            }
-            else {
-                //設定所有Css Style
-                for (var property in main.columnSortNodeList[index].nodeCSS) {
-                    main.columnSortNodeList[index].node.style[property] = main.columnSortNodeList[index].nodeCSS[property];
-                }
-            }
+        for (var index = 0; index < main.columnSortNodeList.length; index++) {
+            main.columnSortNodeList[index].draw(ctx);
         }
     };
     //14.欄位排序元素click事件綁定
     this.bind_event_columnSortNode = function () {
-        var main = this;
-        main.columnSortNodeList.forEach(function (current, index, array) {
-            var isToogle = false;//紀錄click的狀態
-            current.node.onclick = function (event) {
-                var sortName = main.columnSortNodeList[index].columnSortName,   //排序的指定欄位名稱
-                    dataType = main.columnSortNodeList[index].dataType,         //排序的指定欄位資料格式
-                    data = main.data[main.dataIndex],                           //排序的指定資料來源
-                    newData;                                                    //排序完的新自訂資料物件[頁][欄][列]=>値
-                /************************************************/
-                /*
-                    排序的CSS shape change
-                */
-                if (isToogle = !isToogle) {
-                    current.node.classList.remove("triangle_up");
-                    current.node.classList.add("triangle_down");
-                }
-                else {
-                    current.node.classList.remove("triangle_down");
-                    current.node.classList.add("triangle_up");
-                }
-                /************************************************/
-                /*
-                    依據條件重新排序數據
-                */
-                //若此欄位沒排序過
-                if (!main.sortedObject[sortName]) {
-                    //重新計算與排序
-                    newData = main.quickSort(data, sortName, dataType);
-                    //加入排序物件
-                    main.sortedObject[sortName] = newData;
-                }
-                //反轉陣列
-                main.sortedObject[sortName] = main.sortedObject[sortName].reverse();
-                //重新定義數據元件
-                main.refine_JsonData(main.sortedObject[sortName]);
-                //console.log('sorted', sortName);
-                //重新刷新指定頁物件並回到第一頁
-                main.refresh_specifiedPageControl_pageIndex(1);
-                //main.pageControl.specifiedPageList[(main.currentPage - 1) % 10]
-                main.pageControl.incrementPageList[3].node.set_textContent(main.currentPage + "/" + (main.refinedData.length - 1));
-                //console.log('sorted', main.refinedData);
-            };
-        });
+        const main = this;
+        console.log('columnSortNodeList', main.columnSortNodeList);
+        main.gridSearchPriorityList.push(main.columnSortNodeList);
+        //main.columnSortNodeList.forEach(function (current, index, array) {
+        //    var isToogle = false;//紀錄click的狀態
+        //    current.node.onclick = function (event) {
+        //        var sortName = main.columnSortNodeList[index].columnSortName,   //排序的指定欄位名稱
+        //            dataType = main.columnSortNodeList[index].dataType,         //排序的指定欄位資料格式
+        //            data = main.data[main.dataIndex],                           //排序的指定資料來源
+        //            newData;                                                    //排序完的新自訂資料物件[頁][欄][列]=>値
+        //        /************************************************/
+        //        /*
+        //            排序的CSS shape change
+        //        */
+        //        if (isToogle = !isToogle) {
+        //            current.node.classList.remove("triangle_up");
+        //            current.node.classList.add("triangle_down");
+        //        }
+        //        else {
+        //            current.node.classList.remove("triangle_down");
+        //            current.node.classList.add("triangle_up");
+        //        }
+        //        /************************************************/
+        //        /*
+        //            依據條件重新排序數據
+        //        */
+        //        //若此欄位沒排序過
+        //        if (!main.sortedObject[sortName]) {
+        //            //重新計算與排序
+        //            newData = main.quickSort(data, sortName, dataType);
+        //            //加入排序物件
+        //            main.sortedObject[sortName] = newData;
+        //        }
+        //        //反轉陣列
+        //        main.sortedObject[sortName] = main.sortedObject[sortName].reverse();
+        //        //重新定義數據元件
+        //        main.refine_JsonData(main.sortedObject[sortName]);
+        //        //console.log('sorted', sortName);
+        //        //重新刷新指定頁物件並回到第一頁
+        //        main.refresh_specifiedPageControl_pageIndex(1);
+        //        //main.pageControl.specifiedPageList[(main.currentPage - 1) % 10]
+        //        main.pageControl.incrementPageList[3].node.set_textContent(main.currentPage + "/" + (main.refinedData.length - 1));
+        //        //console.log('sorted', main.refinedData);
+        //    };
+        //});
     };
     //(私)排序元件的屬性(欄位名稱與資料格式)交換
     this._swap_columnSortNode_sortName = function (index1, index2) {
@@ -1053,7 +1029,7 @@ var Grid = function (obj) {
         //refresh
         main.refresh_allDisplayElement();
     };
-    //設定Resise元件要做的事
+    //設定Resize元件要做的事
     this.set_task_resizeBar = function () {
         const main = this;
         main.ResizeBarNodeList.forEach(function (current) {
@@ -1110,16 +1086,29 @@ var Grid = function (obj) {
                 }
             }
         };//do selected object task
+        //just change cursor
         main.gridElement.addEventListener('mousemove', function changeMouseCursor(e) {
             e.stopPropagation();
+            var tmpObject;
             //console.log('currentTarget', e.currentTarget);
-            if (!!main.searchObject(main.gridSearchPriorityList, e.layerX, e.layerY)) {
-                main.gridElement.style.cursor = "col-resize";
+            if (!!(tmpObject = main.searchObject(main.gridSearchPriorityList, e.layerX, e.layerY))) {
+                
+                switch (tmpObject.type) {
+                    case 'ResizeBar':
+                        main.gridElement.style.cursor = "col-resize";
+                        break;
+                    case 'column_sort':
+                        main.gridElement.style.cursor = "pointer";
+                        break;
+                    default:
+                        main.gridElement.style.cursor = "";
+                }
+                
             }
             else {
                 main.gridElement.style.cursor = "";
             }
-        }, false);//just change cursor
+        }, false);
         main.gridElement.onmouseup = main.gridElement.onmouseleave = function (e) {
             e.stopPropagation();
             if (flag && !(flag = false)) {
@@ -1140,6 +1129,7 @@ var Grid = function (obj) {
                     //selectedObject.run_task(main, selectedObject.index, true);
                     //清除Grid畫面並重畫所有元件(可忽略不做)
                     main.refresh_allDisplayElement();
+                    main.refresh_columnSortNode();
                 }
             }
         };//do selected object task
@@ -1358,14 +1348,7 @@ function RegularTriangle(name, index, settings, type, backgroundColor) {
     //索引
     this.index = index;
     //位置資訊(永久)
-    this.settings = {
-        x1: settings.x1,
-        y1: settings.y1,
-        x2: settings.x2,
-        y2: settings.y2,
-        x3: settings.x3,
-        y3: settings.y3
-    };
+    this.settings = settings;
     //種類
     this.type = type;
     //位置資訊(暫時)
@@ -1422,7 +1405,7 @@ RegularTriangle.prototype = new function RegularTriangle_prototype() {
     this.draw = function (ctx, color) {
         const that = this;
         ctx.save();
-        ctx.fillStyle = color || that.color;
+        ctx.fillStyle = color || that.backgroundColor;
         ctx.beginPath();
         ctx.moveTo((that.settings.x1 +
                     that.tempSettings.x1),
@@ -1473,11 +1456,11 @@ RegularTriangle.prototype = new function RegularTriangle_prototype() {
         */
         //條件
         if (((b + c) / a) < 1 && (b / a) > 0 && (c / a) > 0) {
-            return true;
+            return that;
         }
-        else {
-            console.log('沒點到', a, b, c);
-        }
+        //else {
+        //    console.log('沒點到', a, b, c);
+        //}
     };
 };
 
@@ -1522,7 +1505,7 @@ function Rectangle(name, index, settings, type, backgroundColor, border) {
     this.childrenArray;
 };
 Rectangle.prototype = new function Rect_prototype(){
-    //位置設置(包含子物件連動的部分)
+    //位置設置(包含子物件連動的部分) x:x軸變動量, y:y軸變動量, forever:是否永久變動, firstObjName:最初變動的物件名稱
     this.set_position = function (x, y, forever, firstObjName) {
         const that = this;
         const objectName = firstObjName;
@@ -1543,18 +1526,23 @@ Rectangle.prototype = new function Rect_prototype(){
             //attatch on this object(this bar's children)
             if (Array.isArray(that.childrenArray) && that.childrenArray.length != 0) {
                 //console.log("拖曳桿:", that.name, objectName);
-                if (that.name === objectName) {
                     that.childrenArray.forEach(function (current, index, arr) {
-                        //拖曳物件的子陣列變更寬度
-                        current.set_size(x, y, forever);
-                    });
-                }
-                else {
-                    that.childrenArray.forEach(function (current, index, arr) {
-                        //拖曳物件後面連接的物件子陣列變更位置
-                        current.set_position(x, y, forever);
-                    });
-                }
+                        //是否為起始Resize bar
+                        if (that.name === objectName) {
+                            if (current.type === 'header' || current.type === 'cell') {
+                                //拖曳物件的子陣列變更寬度
+                                current.set_size(x, y, forever);
+                            }
+                            else {
+                                //change column sort object position
+                                current.set_position(x, y, forever);
+                            }
+                        }
+                        else {
+                            //拖曳物件後面連接的物件子陣列變更位置
+                            current.set_position(x, y, forever);
+                        }
+                   });
             }
             //next object is exist
             if (!!that.nextObj) {
@@ -2045,9 +2033,9 @@ function refinedFunction(data) {
     return result;
 };
 //正三角用的設定
-function RegularTriangleSettings(x, y, length, direction) {
+function Settings_RegularTriangle(x, y, length, direction) {
     this.x1 = x;
-    this.y1 = x;
+    this.y1 = y;
     this.length = length;
     this.direction = !!direction ? 'positive' : 'negative';
     this.x2 = this._get_x2();
@@ -2056,7 +2044,7 @@ function RegularTriangleSettings(x, y, length, direction) {
     this.y3 = this._get_y3();
     
 };
-RegularTriangleSettings.prototype = new function () {
+Settings_RegularTriangle.prototype = new function () {
     //變更x1
     this.set_x1 = function (x1) {
         this.x1 = x1;
@@ -2114,5 +2102,13 @@ RegularTriangleSettings.prototype = new function () {
         else {
             this.direction = 'negative';
         }
+    };
+    //設定正或反三角並設定x1,y1位置
+    this.set_info = function (isPositive, x1, y1) {
+        const that = this;
+        //
+        that.set_direction(isPositive);
+        that.set_x1(x1);
+        that.set_y1(y1);
     };
 }
