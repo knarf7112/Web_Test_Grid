@@ -112,7 +112,8 @@ var Grid = function (obj) {
         //this.refresh_columnSortNode();
         //14.欄位排序元素click事件綁定
         this.bind_event_columnSortNode();
-        this.set_task_resizeBar();
+        //15.將header元件加入事件搜尋列表
+        this.add_headersToSeachList();
         //Grid (first canvas DOM)事件綁定
         this.bind_event_grid();
         //切頁控制(second canvas DOM)事件綁定
@@ -592,15 +593,6 @@ var Grid = function (obj) {
         });
         */
     };
-    //刷新指定頁元件 
-    this.refresh_specifiedPageControl = function (context) {
-        const that = this;
-        const ctx = context || that.pageControlRootNode.getContext('2d');
-        //
-        that.pageControl.specifiedPageList.forEach(function (current, index, arr) {
-            current.node.refresh_textContent(ctx);
-        });
-    };
     //
     this.click_page = function (obj) {
         const main = this;
@@ -731,6 +723,18 @@ var Grid = function (obj) {
         欄位數據交換
     */
     //11.欄位拖曳資料交換事件綁定--作欄與欄資料交換(Closure)
+    this.add_headersToSeachList = function(){
+        const main = this;
+        //get header cell array
+        var headers = main.refineNodeTable.map(function(arr){
+            if(arr[0].type === 'header'){
+                return arr[0];//return header cell object
+            }
+        });//(arr=>{console.log(arr[0]);return arr[0];});
+        console.log('headers',headers);
+        //add to grid search list
+        main.gridSearchPriorityList.push(headers);
+    };
     this.event_bind_header = function () {
         var main = this,
             selectColumnA = -1,
@@ -810,6 +814,8 @@ var Grid = function (obj) {
         const main = this;
         const type = 'column_sort';
         const backgroundColor = 'red';
+        const shape_direction = false;
+        const cell_height = (main.rowHeight / 2) >> 0;
         var tmp_Node;//cell object
         var tmp_Object;//outside object
         var settings;
@@ -817,7 +823,7 @@ var Grid = function (obj) {
         //create column sort elements
         for (var index = 0; index < main.column; index++) {
             //1.新增排序元件的基本形狀屬性(正三角)
-            settings = new Settings_RegularTriangle(main.ResizeBarNodeList[index].settings.x - 18, 10, 15, false);
+            settings = new Settings_RegularTriangle(main.ResizeBarNodeList[index].settings.x - 18, cell_height, 10, shape_direction);
             //2.新增排序元件
             tmp_Node = new RegularTriangle(type, index, settings, type, backgroundColor);
             //加入排序屬性陣列
@@ -830,11 +836,11 @@ var Grid = function (obj) {
     //(私)數據注入時,刷新columnSortName屬性值(設定欄位資料種類)
     this._refresh_columnSortName = function () {
         var main = this,
-            dataType = ['number', 'number', 'number', 'number', 'number'];   //kai的json數據
-        //['number', 'date', 'string', 'string', 'string'];  //借來的json數據
+            dataType =// ['number', 'number', 'number', 'number', 'number'];   //kai的json數據
+        ['number', 'date', 'string', 'string', 'string'];  //借來的json數據
         main.columnSortNodeList.forEach(function (currentElement, index, array) {
             //新增排序元件屬性(欄位名稱)
-            currentElement.columnSortName = main.refineNodeTable[main.columnSequence[index]][0].value;//取得json物件的屬性名稱(當排序的依據條件)
+            currentElement.columnSortName = main.refineNodeTable[main.columnSequence[index]][0].textContent;//取得json物件的屬性名稱(當排序的依據條件)
             //設定欄位資料種類(排序時的依據)
             currentElement.dataType = dataType[index];
         });
@@ -851,56 +857,45 @@ var Grid = function (obj) {
     //14.欄位排序元素click事件綁定
     this.bind_event_columnSortNode = function () {
         const main = this;
-        console.log('columnSortNodeList', main.columnSortNodeList);
+        //console.log('columnSortNodeList', main.columnSortNodeList);
         main.gridSearchPriorityList.push(main.columnSortNodeList);
-        //main.columnSortNodeList.forEach(function (current, index, array) {
-        //    var isToogle = false;//紀錄click的狀態
-        //    current.node.onclick = function (event) {
-        //        var sortName = main.columnSortNodeList[index].columnSortName,   //排序的指定欄位名稱
-        //            dataType = main.columnSortNodeList[index].dataType,         //排序的指定欄位資料格式
-        //            data = main.data[main.dataIndex],                           //排序的指定資料來源
-        //            newData;                                                    //排序完的新自訂資料物件[頁][欄][列]=>値
-        //        /************************************************/
-        //        /*
-        //            排序的CSS shape change
-        //        */
-        //        if (isToogle = !isToogle) {
-        //            current.node.classList.remove("triangle_up");
-        //            current.node.classList.add("triangle_down");
-        //        }
-        //        else {
-        //            current.node.classList.remove("triangle_down");
-        //            current.node.classList.add("triangle_up");
-        //        }
-        //        /************************************************/
-        //        /*
-        //            依據條件重新排序數據
-        //        */
-        //        //若此欄位沒排序過
-        //        if (!main.sortedObject[sortName]) {
-        //            //重新計算與排序
-        //            newData = main.quickSort(data, sortName, dataType);
-        //            //加入排序物件
-        //            main.sortedObject[sortName] = newData;
-        //        }
-        //        //反轉陣列
-        //        main.sortedObject[sortName] = main.sortedObject[sortName].reverse();
-        //        //重新定義數據元件
-        //        main.refine_JsonData(main.sortedObject[sortName]);
-        //        //console.log('sorted', sortName);
-        //        //重新刷新指定頁物件並回到第一頁
-        //        main.refresh_specifiedPageControl_pageIndex(1);
-        //        //main.pageControl.specifiedPageList[(main.currentPage - 1) % 10]
-        //        main.pageControl.incrementPageList[3].node.set_textContent(main.currentPage + "/" + (main.refinedData.length - 1));
-        //        //console.log('sorted', main.refinedData);
-        //    };
-        //});
+    };
+    //(私)依選擇的物件排序欄位
+    this._sort_column = function (selectObject) {
+        const main = this; 
+        //if(Object.hasOwnProperty())
+        //if((typeof selectObject) === 'object' && selectObject.hasOwnProperty('columnSortName') && selectObject.hasOwnProperty('dataType'))
+        const sortName = selectObject.columnSortName;                    //排序的指定欄位名稱
+        const dataType = selectObject.dataType;                          //排序的指定欄位資料格式
+        const data = main.data[main.dataIndex];                          //排序的指定資料來源(原始數據)
+        var newData;                                                     //排序完的新自訂資料物件[頁][欄][列]=>値
+        /*
+                    依據條件重新排序數據
+        */
+        //若此欄位沒排序過
+        if (!main.sortedObject[sortName]) {
+            //重新計算與排序
+            newData = main.quickSort(data, sortName, dataType);
+            //加入排序物件
+            main.sortedObject[sortName] = newData;
+        }
+        //反轉陣列
+        main.sortedObject[sortName] = main.sortedObject[sortName].reverse();
+        //重新定義數據元件
+        main.refine_JsonData(main.sortedObject[sortName]);
+        //console.log('sorted', sortName);
+        //重新刷新指定頁物件並回到第一頁
+        main.refresh_specifiedPageControl_pageIndex(1);
+        //main.pageControl.specifiedPageList[(main.currentPage - 1) % 10]
+        //main.pageControl.incrementPageList[3].node.set_textContent(main.currentPage + "/" + (main.refinedData.length - 1));
+        //console.log('sorted', main.refinedData);
     };
     //(私)排序元件的屬性(欄位名稱與資料格式)交換
     this._swap_columnSortNode_sortName = function (index1, index2) {
-        var main = this;
-        var tmpColumnSortName,
-            tmpDataType;
+        const main = this;
+        var tmpColumnSortName;
+        var tmpDataType;
+        //console.log('QQQ', main.columnSortNodeList[index1], index1, index2);
         tmpColumnSortName = main.columnSortNodeList[index1].columnSortName;
         tmpDataType = main.columnSortNodeList[index1].dataType;
         main.columnSortNodeList[index1].columnSortName = main.columnSortNodeList[index2].columnSortName;
@@ -1042,7 +1037,9 @@ var Grid = function (obj) {
         const main = this;
         var ctx = main.gridElement.getContext('2d');
         var flag = false;
+        var direction = false;//sort column shape(正三角/反三角)
         var selectedObject;
+        var swapObject;
         var startX, startY, endX, endY;
         main.gridElement.onmousedown = function (e) {
             e.stopPropagation();
@@ -1051,6 +1048,15 @@ var Grid = function (obj) {
                 startY = e.layerY;
                 //依據座標檢查搜尋列表並回傳點擊的物件(沒找到則為undefined)
                 selectedObject = main.searchObject(main.gridSearchPriorityList, startX, startY);
+                //檢查選取的物件種類是否為header
+                if (!!selectedObject && selectedObject.type === 'header') {
+                    //change dom cursor
+                    main.gridElement.style.cursor = "url('./CSS/ICON/Drag_and_Drop-128.png'),default";
+                    //變更透明度
+                    selectedObject.set_opacity(0.5);
+                    main.refresh_allDisplayElement();
+                    main.refresh_columnSortNode();
+                }
             }
         };//search object when mouse down 
         main.gridElement.onmousemove = function (e) {
@@ -1058,11 +1064,11 @@ var Grid = function (obj) {
             if (flag) {
                 endX = e.layerX;
                 endY = e.layerY;
-                e.target.style.cursor = "col-resize";
                 //
                 if (!!selectedObject) {
                     switch (selectedObject.type) {
                         case "ResizeBar":
+                            e.target.style.cursor = 'col-resize';
                             //最小範圍檢測,先取得物件的X位置資訊
                             if ((selectedObject.get_forwardRange() + (endX - startX)) < 20) {
                                 main.ResizeBar_rangeList[selectedObject.name] = 20 - selectedObject.get_forwardRange();
@@ -1074,7 +1080,18 @@ var Grid = function (obj) {
                             //console.log("Resizer mouse move ...", main.ResizeBar_rangeList);
                             selectedObject.set_position(main.ResizeBar_rangeList[selectedObject.name], 0, false, selectedObject.name);
                             break;
-                        case "":
+                        case "header":
+                            swapObject = main.searchObject(main.gridSearchPriorityList, endX, endY);
+                            if (!!swapObject && swapObject !== selectedObject && swapObject.type === 'header') {
+                                main.gridSearchPriorityList.forEach(function (arr) {
+                                    if (Array.isArray(arr) && arr[0].type === 'header') {
+                                        arr.forEach(function (header) {
+                                            header.set_backgroundColor('rgb(120, 207, 207)');
+                                        });
+                                    }
+                                });
+                                swapObject.set_backgroundColor('yellow');
+                            }
                             break;
                         default:
                             break;
@@ -1091,8 +1108,8 @@ var Grid = function (obj) {
             e.stopPropagation();
             var tmpObject;
             //console.log('currentTarget', e.currentTarget);
+            "url('./CSS/ICON/Drag_and_Drop-128.png')";
             if (!!(tmpObject = main.searchObject(main.gridSearchPriorityList, e.layerX, e.layerY))) {
-                
                 switch (tmpObject.type) {
                     case 'ResizeBar':
                         main.gridElement.style.cursor = "col-resize";
@@ -1106,7 +1123,7 @@ var Grid = function (obj) {
                 
             }
             else {
-                main.gridElement.style.cursor = "";
+                main.gridElement.style.cursor = ""; //"";
             }
         }, false);
         main.gridElement.onmouseup = main.gridElement.onmouseleave = function (e) {
@@ -1120,7 +1137,35 @@ var Grid = function (obj) {
                             selectedObject.set_position(main.ResizeBar_rangeList[selectedObject.name], 0, true, selectedObject.name);
                             console.log("Resizer mouse up or out ...", main.ResizeBar_rangeList, selectedObject);
                             break;
-                        case "":
+                        case "column_sort":
+                            console.log('Column Sort End', selectedObject);
+                            //reset column sort shape
+                            main.columnSortNodeList.forEach(function (obj) {
+                                obj.settings.set_direction(false);//reset all shape from column sort object 
+                            });//(obj)=>{obj.settings.set_direction(false);});
+                            //sort column
+                            direction = !direction;
+                            selectedObject.settings.set_direction(direction);
+                            main._sort_column(selectedObject);
+
+                            break;
+                        case 'header':
+                            //整欄交換
+                            main._swap(main.columnSequence, selectedObject.columnIndex, swapObject.columnIndex);//交換起始與結束的索引順序
+                            main._swap_columnSortNode_sortName(selectedObject.columnIndex, swapObject.columnIndex);//交換排序的欄位數據
+                            //還原背景色與透明度
+                            main.gridSearchPriorityList.forEach(function (arr) {
+                                if (Array.isArray(arr) && arr[0].type === 'header') {
+                                    arr.forEach(function (header) {
+                                        header.set_backgroundColor('rgb(120, 207, 207)');
+                                    });
+                                }
+                            });
+                            selectedObject.set_opacity(1);
+                            //更新數據與畫面
+                            main.display_data(main.currentPage);
+                            main.refresh_allDisplayElement();
+                            main.refresh_columnSortNode();
                             break;
                         default:
                             break;
@@ -1146,7 +1191,7 @@ var Grid = function (obj) {
             e.stopPropagation();
             //依據座標檢查搜尋列表並回傳點擊的物件(沒找到則為undefined)
             selectedObject = main.searchObject(main.pageSearchPriorityList, e.layerX, e.layerY);
-            console.log('click', e.layerX, e.layerY, selectedObject);
+            //console.log('click', e.layerX, e.layerY, selectedObject);
             if(!!selectedObject){
                 main.click_page(selectedObject);
             }
@@ -1681,6 +1726,8 @@ function Cell_canvas(name,index) {
         this.height;
         this.backgroundColor;
         this.visibility = 'visible';
+        //opacity
+        this.opacity = 1;
     };
     //臨時的posiiton and width and height
     this.tempStyle = new function () {
@@ -1732,6 +1779,8 @@ Cell_canvas.prototype = new function Cell_prototype() {
         this.backgroundColor = "yellow";
         //cursor style
         this.cursor = "default";
+        //opacity
+        this.opacity = 1;
     };
     //typeface and size setting
     this.font = new function () {
@@ -1754,6 +1803,10 @@ Cell_canvas.prototype = new function Cell_prototype() {
         const that = this;
         //console.log('draw rectangle:' + this.name);
         //ctx.clearRect(this.style.left, this.style.top, this.style.width, this.style.height);
+        //設定透明度(拖曳時的元件改變效果)
+        if (that.style.opacity != 1) {
+            ctx.globalAlpha = that.style.opacity;
+        }
         ctx.fillStyle = that.style.backgroundColor;
         ctx.fillRect((that.style.left + that.style.border + that.tempStyle.left),
             (that.style.top + that.style.border + that.tempStyle.top),
@@ -1807,6 +1860,10 @@ Cell_canvas.prototype = new function Cell_prototype() {
         //console.log("draw text:" + this.name);
         const that = this;
         var text = "";
+        //設定透明度(拖曳時的元件改變效果)
+        if (that.style.opacity != 1) {
+            ctx.globalAlpha = that.style.opacity;
+        }
         ctx.fillStyle = that.font.color;
         ctx.font = "" + that.font.size + that.font.unit + " " + that.font.typeface;//(字串)大小 + 單位 + 字體
         //檢查字串長度是否超出矩形寬度
@@ -1966,6 +2023,10 @@ Cell_canvas.prototype = new function Cell_prototype() {
             that.taskFuncList.push(arguments[i]);
         }
     };
+    //設定透明度
+    this.set_opacity = function (opacity) {
+        this.style.opacity = +opacity;
+    }
     //檢查是否在物件的範圍內
     this.hitCheck = function (x, y){
         const that = this;
@@ -2078,7 +2139,7 @@ Settings_RegularTriangle.prototype = new function () {
     this._get_y3 = function () {
         const that = this;
         var y3;
-        if (that.direction === 'postive') {
+        if (that.direction === 'positive') {
             y3 = that.y1 - Math.round((that.length / 2) * Math.sqrt(3));//y3的高(正三角) = y1 - 邊長 * 根號3
         }
         else {
@@ -2088,7 +2149,7 @@ Settings_RegularTriangle.prototype = new function () {
     };
     this._set_y3 = function () {
         const that = this;
-        if (that.direction === 'postive') {
+        if (that.direction === 'positive') {
             that.y3 = that.y1 - Math.round((that.length / 2) * Math.sqrt(3));//y3的高(正三角) = y1 - 邊長 * 根號3
         }
         else {
@@ -2102,6 +2163,7 @@ Settings_RegularTriangle.prototype = new function () {
         else {
             this.direction = 'negative';
         }
+        this._set_y3();
     };
     //設定正或反三角並設定x1,y1位置
     this.set_info = function (isPositive, x1, y1) {
