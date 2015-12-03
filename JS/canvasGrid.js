@@ -895,7 +895,7 @@ var Grid = function (obj) {
         const main = this;
         var tmpColumnSortName;
         var tmpDataType;
-        //console.log('QQQ', main.columnSortNodeList[index1], index1, index2);
+        //交換欄位名稱與資料格式資訊(排序用)
         tmpColumnSortName = main.columnSortNodeList[index1].columnSortName;
         tmpDataType = main.columnSortNodeList[index1].dataType;
         main.columnSortNodeList[index1].columnSortName = main.columnSortNodeList[index2].columnSortName;
@@ -1134,8 +1134,11 @@ var Grid = function (obj) {
                 if (!!selectedObject) {
                     switch (selectedObject.type) {
                         case "ResizeBar":
-                            selectedObject.set_position(main.ResizeBar_rangeList[selectedObject.name], 0, true, selectedObject.name);
-                            console.log("Resizer mouse up or out ...", main.ResizeBar_rangeList, selectedObject);
+                            if ((typeof main.ResizeBar_rangeList[selectedObject.name]) !== 'undefined') {
+                                //if (main.ResizeBar_rangeList[selectedObject.name])
+                                selectedObject.set_position(main.ResizeBar_rangeList[selectedObject.name], 0, true, selectedObject.name);
+                                console.log("Resizer mouse up or out ...", main.ResizeBar_rangeList, selectedObject);
+                            }
                             break;
                         case "column_sort":
                             console.log('Column Sort End', selectedObject);
@@ -1150,17 +1153,19 @@ var Grid = function (obj) {
 
                             break;
                         case 'header':
-                            //整欄交換
-                            main._swap(main.columnSequence, selectedObject.columnIndex, swapObject.columnIndex);//交換起始與結束的索引順序
-                            main._swap_columnSortNode_sortName(selectedObject.columnIndex, swapObject.columnIndex);//交換排序的欄位數據
-                            //還原背景色與透明度
-                            main.gridSearchPriorityList.forEach(function (arr) {
-                                if (Array.isArray(arr) && arr[0].type === 'header') {
-                                    arr.forEach(function (header) {
-                                        header.set_backgroundColor('rgb(120, 207, 207)');
-                                    });
-                                }
-                            });
+                            if (!!swapObject && swapObject !== selectedObject) {
+                                //整欄交換
+                                main._swap(main.columnSequence, selectedObject.columnIndex, swapObject.columnIndex);//交換起始與結束的索引順序
+                                main._swap_columnSortNode_sortName(selectedObject.columnIndex, swapObject.columnIndex);//交換排序的欄位數據
+                                //還原背景色與透明度
+                                main.gridSearchPriorityList.forEach(function (arr) {
+                                    if (Array.isArray(arr) && arr[0].type === 'header') {
+                                        arr.forEach(function (header) {
+                                            header.set_backgroundColor('rgb(120, 207, 207)');
+                                        });
+                                    }
+                                });
+                            }
                             selectedObject.set_opacity(1);
                             //更新數據與畫面
                             main.display_data(main.currentPage);
