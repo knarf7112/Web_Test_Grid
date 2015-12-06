@@ -79,6 +79,8 @@ var Grid = function (obj) {
     this.gridSearchPriorityList = [];
     //PageControl事件搜尋的優先順序之物件列表
     this.pageSearchPriorityList = [];
+    //縮放的水平軸滑桿元件
+    this.sliderBar;
     //初始化
     this.init = function () {
         //1.建立展示資料元素
@@ -89,8 +91,10 @@ var Grid = function (obj) {
         this.set_columnSequenceArray();
         //3.刷新Grid的dispaly cell物件
         this.refresh_allDisplayElement();
-        //4.建立flexi bar
+        //4.建立縮放元件
         this.createResizeBar();
+        // 建立slider bar 元件
+        this.createSliderBar();
         //5.建立(遞增或遞減)切頁元件
         this.createIncrementPageControl();
         //6.刷新(遞增或遞減)切頁元件
@@ -243,6 +247,25 @@ var Grid = function (obj) {
         //TODO ... 需加入委派的方法 1.要改sort位置 2.要改每個display的cell的位置和寬度 3.要改slider bar的寬度 後面再加
         main.gridSearchPriorityList.unshift(main.ResizeBarNodeList);//加入搜尋列表...放前面
     };
+    /*
+        Slider bar元件
+    */
+    this.createSliderBar = function () {
+        const main = this;
+        const name = 'sliderBar';
+        const index = 1;
+        const settings = new function(){
+            this.x = 0;
+            this.y = main.height - 10;
+            this.width = main.width;
+            this.height = 10;
+        };
+        const backgroundColor = 'green';
+        const border = 0;
+        main.sliderBar = new Rectangle(name, index, settings, name, backgroundColor, border);
+        console.log('Slider Bar', main.sliderBar);
+    };
+
     /*
         切頁元件
     */
@@ -593,7 +616,7 @@ var Grid = function (obj) {
         });
         */
     };
-    //
+    //計算遞增(遞減)型元件切頁
     this.click_page = function (obj) {
         const main = this;
         if (typeof (obj.type) !== 'string') {
@@ -601,51 +624,40 @@ var Grid = function (obj) {
         }
         switch (obj.type) {
             case "min":
-                    //
-                    main.refresh_specifiedPageControl_pageIndex(1);
-                    //main.pageControl.incrementPageList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
-                    console.log('切頁:min');
+                    //刷新指定頁面數據
+                    main.refresh_specifiedPageControl_pageIndex(1);             
+                    //console.log('切頁:min');
                 break;
             case "-10":
                     var currentPage = ((main.currentPage - 10) >= 1) ? (main.currentPage - 10) : 1;
                     main.refresh_specifiedPageControl_pageIndex(currentPage);
-                    //main.display_data(main.currentPage);
-                    //main.pageControl.incrementPageList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
-                    console.log('切頁: -10');
+                    //console.log('切頁: -10');
                 break;
             case "-1":
                     var currentPage = ((main.currentPage - 1) >= 1) ? (main.currentPage - 1) : 1;
                     main.refresh_specifiedPageControl_pageIndex(currentPage);
-                    //main.display_data(main.currentPage);
-                    //main.pageControl.incrementPageList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
-                    console.log('切頁: -1');
+                    //console.log('切頁: -1');
                 break;
             case "+1":
                     var currentPage = ((main.currentPage + 1) <= (main.refinedData.length - 1)) ? (main.currentPage + 1) : (main.refinedData.length - 1);
-                    console.log('+1', currentPage);
+                    //console.log('+1', currentPage);
                     main.refresh_specifiedPageControl_pageIndex(currentPage);
-                    //main.display_data(main.currentPage);
-                    //main.pageControl.incrementPageList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
-                    console.log('切頁: +1');
+                    //console.log('切頁: +1');
                 break;
             case "+10":
                     var currentPage = ((main.currentPage + 10) <= (main.refinedData.length - 1)) ? (main.currentPage + 10) : (main.refinedData.length - 1);
                     main.refresh_specifiedPageControl_pageIndex(currentPage);
-                    //main.display_data(main.currentPage);
-                    //main.pageControl.incrementPageList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
-                    console.log('切頁: +10');
+                    //console.log('切頁: +10');
                 break;
             case "max":
                     var currentPage = (main.refinedData.length - 1);
                     main.refresh_specifiedPageControl_pageIndex(currentPage);
-                    //main.display_data(main.currentPage);
-                    //main.pageControl.incrementPageList[3].node.textContent = main.currentPage + "/" + (main.refinedData.length - 1);
-                    console.log('切頁:max');
+                    //console.log('切頁:max');
                     break;
             case "specified_page":
                 var currentPage = main.pageControl.specifiedPageList[obj.index].pageIndex;
                 main.refresh_specifiedPageControl_pageIndex(currentPage);
-                console.log('指定切頁', main.pageControl.specifiedPageList[obj.index].pageIndex);
+                //console.log('指定切頁', main.pageControl.specifiedPageList[obj.index].pageIndex);
                 break;
             default:
                 throw Error('[click_page]Error: type not defined => ' + typeName);
@@ -722,7 +734,7 @@ var Grid = function (obj) {
     /*
         欄位數據交換
     */
-    //11.欄位拖曳資料交換事件綁定--作欄與欄資料交換(Closure)
+    //11.新增header類別的元件進入grid定位搜尋列表--欄與欄資料交換
     this.add_headersToSeachList = function(){
         const main = this;
         //get header cell array
@@ -731,74 +743,9 @@ var Grid = function (obj) {
                 return arr[0];//return header cell object
             }
         });//(arr=>{console.log(arr[0]);return arr[0];});
-        console.log('headers',headers);
+        //console.log('headers',headers);
         //add to grid search list
         main.gridSearchPriorityList.push(headers);
-    };
-    this.event_bind_header = function () {
-        var main = this,
-            selectColumnA = -1,
-            selectColumnB = -1;
-        main.refineNodeTable.forEach(function (current, index, array) {
-            if ('header' === current[0].type) {
-                var i = 0;
-                //console.log("Header", current);
-                current[0].node.ondragstart = function (e) {
-                    e.stopPropagation();
-                    selectColumnA = index;//紀錄起始拖曳的索引值
-                    this.style.opacity = "0.4";
-
-                    console.log('start', selectColumnA);
-                };
-                current[0].node.ondragend = function (e) {
-                    e.stopPropagation();
-                    this.style.opacity = "";
-                    console.log("dragend event", ++i);
-                };
-
-                //拉起來後就會一直不斷的觸發(即使滑鼠不動)--這是只要拉起來
-                //current[0].node.ondrag = function (e) {
-                //    console.log("drag event", e.currentTarget.textContent, ++i);
-                //};
-                //拉起來後就會一直不斷的觸發(即使滑鼠不動)--這是只要經過有的拖易物件滑過去,就會觸發
-                current[0].node.ondragover = function (e) {
-                    e.stopPropagation();
-                    // prevent default to allow drop,By default, data/elements cannot be dropped in other elements. To allow a drop, we must prevent the default handling of the element.
-                    e.preventDefault();//一定要終止此預設行為才能引發drop事件
-                    console.log("dragover event", e.currentTarget.textContent, ++i);
-                };
-                //用來改拖曳進入時的元素底色
-                current[0].node.ondragenter = function (e) {
-                    e.stopPropagation();
-                    console.log("dragendter event", e.currentTarget.textContent, ++i);
-                    this.style.backgroundColor = "yellow";
-                };
-                //用來還原拖曳離開時的元素底色(改回原來的)
-                current[0].node.ondragleave = function (e) {
-                    e.stopPropagation();
-                    console.log("dragendter event", e.currentTarget.textContent, ++i);
-                    this.style.backgroundColor = "rgb(120, 207, 207)";
-                };
-                //拖曳放下確定時
-                current[0].node.ondrop = function (e) {
-                    e.stopPropagation();
-                    this.style.backgroundColor = "rgb(120, 207, 207)";
-                    //console.log("drop event", e, ++i);
-                    selectColumnB = index;//紀錄結束拖曳的索引值
-                    //console.log('end', selectColumnB);
-                    main._swap(main.columnSequence, selectColumnA, selectColumnB);//交換起始與結束的索引順序
-                    main._swap_columnSortNode_sortName(selectColumnA, selectColumnB);//交換排序的欄位數據
-                    main.display_data(main.currentPage);
-                };
-                //若有drag事件就不會有mouseup事件
-                //current[0].node.onmouseup = function (e) {
-                //    console.log("mouseup  event", e.currentTarget.textContent,++i);
-                //};
-                //current[0].node.onmousedown = function (e) {
-                //    console.log('mouse down', e);
-                //};
-            }
-        })
     };
     //(私)物件屬性値交換
     this._swap = function (ary, a, b) {
@@ -1171,6 +1118,7 @@ var Grid = function (obj) {
                             main.display_data(main.currentPage);
                             main.refresh_allDisplayElement();
                             main.refresh_columnSortNode();
+                            swapObject = null;
                             break;
                         default:
                             break;
@@ -1674,12 +1622,18 @@ Rectangle.prototype = new function Rect_prototype(){
     this.draw = function (ctx, color) {
         const that = this;
         ctx.save();
-        //console.log('ctx',ctx);
         ctx.fillStyle = color || that.backgroundColor;
         ctx.fillRect((that.settings.x + that.tempSettings.x) + that.border,
                      (that.settings.y + that.tempSettings.y) + that.border,
                      (that.settings.width + that.tempSettings.width) - (that.border * 2),
                      (that.settings.height + that.tempSettings.height) - (that.border * 2));
+        /* draw infonation */
+        /*
+        console.log('draw', ctx.fillStyle, (that.settings.x + that.tempSettings.x) + that.border,
+            (that.settings.y + that.tempSettings.y) + that.border,
+            (that.settings.width + that.tempSettings.width) - (that.border * 2),
+            (that.settings.height + that.tempSettings.height) - (that.border * 2));
+        */
         ctx.restore();
     };
     //檢查是否在物件的範圍內
