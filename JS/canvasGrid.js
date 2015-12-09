@@ -1646,6 +1646,7 @@ Rectangle.prototype = new function Rect_prototype(){
            y < (that.settings.y + that.tempSettings.y + that.settings.height + that.tempSettings.height)) {
             return true;
         }
+        return false;
     };
     //執行委派的任務並轉移指標到主物件
     this.run_task = function (main, index, flag) {
@@ -1996,6 +1997,7 @@ Cell_canvas.prototype = new function Cell_prototype() {
            y < ((that.style.top + that.style.border) + that.style.height)) {
             return true;
         }
+        return false;
     };
     //執行委派的任務並轉移指標到主物件
     this.run_task = function (main, index) {
@@ -2132,4 +2134,74 @@ Settings_RegularTriangle.prototype = new function () {
         that.set_x1(x1);
         that.set_y1(y1);
     };
-}
+};
+
+/*
+    Slider Component
+ */
+function Slider(index,type,origin_width,fixed_width,sliderBarSetting) {
+    //object point
+    const that = this;
+    //索引
+    this.index = index;
+    //種類
+    this.type = type;
+    //
+    this.left;
+    //
+    this.top;
+    //第一次的寬度
+    this._origin_Width = +origin_width;
+    //應設的寬度
+    this._fixed_width = +fixed_width;
+    //
+    this.display = false;
+    //滑塊物件
+    this.bar_X = new function () {
+        //寬度
+        this.width = !!sliderBarSetting && (sliderBarSetting.width || that._fixed_width);
+        //高度
+        this.height = !!sliderBarSetting && (sliderBarSetting.height || 10);
+        //X軸位置
+        this.left = !!sliderBarSetting && (sliderBarSetting.left || 0);
+        //Y軸位置
+        this.top = !!sliderBarSetting && (sliderBarSetting.top || 0);
+        //color
+        this.backgroundColor = !!sliderBarSetting && (sliderBarSetting.backgroundColor || 'GreenYellow');
+        //check hit if in shape range
+        this.hitCheck = function (x, y) {
+            const bar = this;
+            //check slider bar shape range
+            if (((bar.left) > that.min_X) &&
+                ((bar.left + that.bar.width) < that.max_X) &&
+                ((bar.top) > that.max_Y) &&
+                ((bar.top + that.bar.height) > that.max_Y)) {
+                return true;
+            }
+            return false;
+        };
+    };
+    //每步的間距差
+    this.step = 1;
+    //X軸最小範圍
+    this.min_X = this._origin_Width;
+    //X軸最大範圍
+    this.max_X = this._origin_Width;
+    //Y軸最小範圍
+    this.min_Y = 0;
+    //Y軸最大範圍
+    this.max_Y = this._origin_Width;
+};
+Slider.prototype = new function () {
+    //change object width and remap slider bar width
+    this.change_width = function (currentWidth) {
+        const that = this;
+
+        
+    };
+    //get remap x position
+    this.get_remap_x = function () {
+        const that = this;
+        
+    };
+};
