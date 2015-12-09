@@ -2139,69 +2139,43 @@ Settings_RegularTriangle.prototype = new function () {
 /*
     Slider Component
  */
-function Slider(index,type,origin_width,fixed_width,sliderBarSetting) {
+function Slider(index,type,origin_range,remap_max_range,step) {
     //object point
     const that = this;
     //索引
     this.index = index;
     //種類
     this.type = type;
-    //
-    this.left;
-    //
-    this.top;
-    //第一次的寬度
-    this._origin_Width = +origin_width;
-    //應設的寬度
-    this._fixed_width = +fixed_width;
-    //
-    this.display = false;
+    //最初的值
+    this.origin_range = +origin_range;
+    //變動的值
+    this.float_range = 0;
+    //比率:  float_range /origin_range
+    this.ratio = this.float_range / this.origin_range;
     //滑塊物件
-    this.bar_X = new function () {
-        //寬度
-        this.width = !!sliderBarSetting && (sliderBarSetting.width || that._fixed_width);
-        //高度
-        this.height = !!sliderBarSetting && (sliderBarSetting.height || 10);
-        //X軸位置
-        this.left = !!sliderBarSetting && (sliderBarSetting.left || 0);
-        //Y軸位置
-        this.top = !!sliderBarSetting && (sliderBarSetting.top || 0);
-        //color
-        this.backgroundColor = !!sliderBarSetting && (sliderBarSetting.backgroundColor || 'GreenYellow');
-        //check hit if in shape range
-        this.hitCheck = function (x, y) {
-            const bar = this;
-            //check slider bar shape range
-            if (((bar.left) > that.min_X) &&
-                ((bar.left + that.bar.width) < that.max_X) &&
-                ((bar.top) > that.max_Y) &&
-                ((bar.top + that.bar.height) > that.max_Y)) {
-                return true;
-            }
-            return false;
-        };
+    this.bar = new function () {
+        //映射的最大範圍(定值)
+        this.max_range = +remap_max_range;
+        //Bar範圍(依據原始範圍之後的變化跟者變化)
+        this.range = that.remap_max_range;
+        this.position = 0;
     };
     //每步的間距差
-    this.step = 1;
+    this.step = step || 1;
     //X軸最小範圍
-    this.min_X = this._origin_Width;
+    this.min = this._origin_Width;
     //X軸最大範圍
-    this.max_X = this._origin_Width;
-    //Y軸最小範圍
-    this.min_Y = 0;
-    //Y軸最大範圍
-    this.max_Y = this._origin_Width;
-};
-Slider.prototype = new function () {
-    //change object width and remap slider bar width
-    this.change_width = function (currentWidth) {
+    this.max = this._origin_Width;
+    //
+    this.change_range = function (new_float_range) {
         const that = this;
-
-        
+        that.change_range(new_float_range);
+        var range = ((that.origin_range * that.bar.max_range) / float_range);
     };
-    //get remap x position
-    this.get_remap_x = function () {
+    this.refresh_position = function (new_float_range) {
         const that = this;
-        
+        //x1:y1 = x2:y2; 紀錄位置(舊):bar的range(舊)和max Range間距差 = 紀錄位置(新):bar的range(新)和max Range間距差
+        that.bar.position = (that.bar.position * (that.bar.max_range - new_float_range)) / (that.bar.max_range - that.bar.range);
+
     };
 };
