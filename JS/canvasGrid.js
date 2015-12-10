@@ -2166,16 +2166,32 @@ function Slider(index,type,origin_range,remap_max_range,step) {
     this.min = this._origin_Width;
     //X軸最大範圍
     this.max = this._origin_Width;
-    //
+    //依據變動寬度映射bar寬度比例
     this.change_range = function (new_float_range) {
         const that = this;
-        that.change_range(new_float_range);
-        var range = ((that.origin_range * that.bar.max_range) / float_range);
+        //0.設定新的變動寬度
+        that.float_range = new_float_range;
+        //1.取得bar新的寬度比例
+        var new_bar_range = ((that.origin_range * that.bar.max_range) / that.float_range);//x1:y1 = x2:y2 => x2 = (x1*y2)/y1
+        //2.刷新bar位置的値(需要用舊的bar range値來換算,所以先不覆蓋)
+        that._refresh_position(new_bar_range);
+        //3.
+        that.bar.range = new_bar_range;
+        //3.刷新寬度比例
+        that._set_ratio();
     };
-    this.refresh_position = function (new_float_range) {
+    //刷新寬度比例(新的寬度/原始的寬度)
+    this._set_ratio = function () {
+        const that = this;
+        that.ratio = that.float_range / that.origin_range;
+    };
+    //依據新的寬度刷新bar起始位置
+    this._refresh_position = function (new_bar_range) {
         const that = this;
         //x1:y1 = x2:y2; 紀錄位置(舊):bar的range(舊)和max Range間距差 = 紀錄位置(新):bar的range(新)和max Range間距差
-        that.bar.position = (that.bar.position * (that.bar.max_range - new_float_range)) / (that.bar.max_range - that.bar.range);
-
+        console.log('變更前的起始位置', that.bar.position);
+        //new bar position = ((old bar position) * ()
+        that.bar.position = (that.bar.position * (that.bar.max_range - new_bar_range)) / (that.bar.max_range - that.bar.range);
+        console.log('變更後的起始位置', that.bar.position);
     };
 };
