@@ -2137,9 +2137,11 @@ Settings_RegularTriangle.prototype = new function () {
 };
 
 /*
-    Slider Component
+    Slider Component 計算比例的元件
+    [Number]{origin_range}:原始寬度值
+    [Number]{remap_max_range}:映射bar的最大固定寬度值
  */
-function Slider(index,type,origin_range,remap_max_range,step) {
+function Proportion(index,type,origin_range,remap_max_range,step) {
     //object point
     const that = this;
     //索引
@@ -2157,8 +2159,9 @@ function Slider(index,type,origin_range,remap_max_range,step) {
         //映射的最大範圍(定值)
         this.max_range = +remap_max_range;
         //Bar範圍(依據原始範圍之後的變化跟者變化)
-        this.range = that.remap_max_range;
-        this.position = 0;
+        this.range = +remap_max_range;
+        //位置(包含Bar範圍寬度)
+        this.position = +remap_max_range;
     };
     //每步的間距差
     this.step = step || 1;
@@ -2173,17 +2176,33 @@ function Slider(index,type,origin_range,remap_max_range,step) {
         that.float_range = new_float_range;
         //1.取得bar新的寬度比例
         var new_bar_range = ((that.origin_range * that.bar.max_range) / that.float_range);//x1:y1 = x2:y2 => x2 = (x1*y2)/y1
-        //2.刷新bar位置的値(需要用舊的bar range値來換算,所以先不覆蓋)
+        //2.刷新bar位置的値(需要用舊的bar range値與新的bar range值來換算,所以先不覆蓋)
         that._refresh_position(new_bar_range);
-        //3.
+        //3.設定新的bar寬度
         that.bar.range = new_bar_range;
+        console.log('變動後的bar range', that.bar.range, 'max range',that.bar.max_range);
         //3.刷新寬度比例
         that._set_ratio();
+    };
+    //設定bar位置並取得扣除bar寬度後的位置
+    this.set_position = function (val) {
+        const that = this;
+        const realPosition = val - that.bar.range;
+        if (realPosition >= 0 && val <= that.bar.max_range) {
+            //位移量
+            that.bar.position = realPosition;
+        }
+        else {
+            console.log('扣除寬度後非範圍內 ', val, that.bar.range);
+            that.bar.position = 0;
+        }
+        return that.bar.position;
     };
     //刷新寬度比例(新的寬度/原始的寬度)
     this._set_ratio = function () {
         const that = this;
         that.ratio = that.float_range / that.origin_range;
+        console.log('比例變更為', that.ratio, '浮動範圍',that.float_range ,'原始範圍', that.origin_range);
     };
     //依據新的寬度刷新bar起始位置
     this._refresh_position = function (new_bar_range) {
@@ -2192,6 +2211,8 @@ function Slider(index,type,origin_range,remap_max_range,step) {
         console.log('變更前的起始位置', that.bar.position);
         //new bar position = ((old bar position) * ()
         that.bar.position = (that.bar.position * (that.bar.max_range - new_bar_range)) / (that.bar.max_range - that.bar.range);
+        //if is NaN then position = 0
+        isNaN(that.bar.position) && (that.bar.position = 0);
         console.log('變更後的起始位置', that.bar.position);
     };
 };
