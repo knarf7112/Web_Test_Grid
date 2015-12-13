@@ -80,7 +80,11 @@ var Grid = function (obj) {
     //PageControl事件搜尋的優先順序之物件列表
     this.pageSearchPriorityList = [];
     //縮放的水平軸滑桿元件
-    this.sliderBar;
+    this.slider_X_Bar;
+    //縮放的水平軸滑桿元件外框
+    this.slider_X_OuterFrame;
+    //計算slider比例的元件
+    this.sliderProportion;
     //初始化
     this.init = function () {
         //1.建立展示資料元素
@@ -94,7 +98,9 @@ var Grid = function (obj) {
         //4.建立縮放元件
         this.createResizeBar();
         // 建立slider bar 元件
-        this.createSliderBar();
+        this.createSlider();
+        //
+        this.add_slidersToSeachList();
         //5.建立(遞增或遞減)切頁元件
         this.createIncrementPageControl();
         //6.刷新(遞增或遞減)切頁元件
@@ -115,7 +121,7 @@ var Grid = function (obj) {
         //13.刷新欄位排序元件
         //this.refresh_columnSortNode();
         //14.欄位排序元素click事件綁定
-        this.bind_event_columnSortNode();
+        this.add_columnSortNodesToSeachList();
         //15.將header元件加入事件搜尋列表
         this.add_headersToSeachList();
         //Grid (first canvas DOM)事件綁定
@@ -250,22 +256,46 @@ var Grid = function (obj) {
     /*
         Slider bar元件
     */
-    this.createSliderBar = function () {
+    this.createSlider = function () {
         const main = this;
-        const name = 'sliderBar';
-        const index = 1;
-        const settings = new function(){
+        const sliderBarTypeName = 'sliderBar';
+        const sliderOuterFrametypeName = 'sliderOuterFrame';
+        //slider shape 位置與大小資訊
+        const sliderBarSettings = new function () {
             this.x = 0;
-            this.y = main.height - 10;
+            this.y = main.height - 5;
             this.width = main.width;
-            this.height = 10;
+            this.height = 5;
         };
-        const backgroundColor = 'green';
-        const border = 0;
-        main.sliderBar = new Rectangle(name, index, settings, name, backgroundColor, border);
-        console.log('Slider Bar', main.sliderBar);
-    };
+        const sliderOuterFrameSettings = new function () {
+            this.x = 0;
+            this.y = main.height - 5;
+            this.width = main.width;
+            this.height = 5;
+        };
 
+        //1.create slider bar
+        main.slider_X_Bar = new Rectangle(sliderBarTypeName, 0, sliderBarSettings, sliderBarTypeName, 'greenyellow', 0);
+        
+        //2.create the outer frame
+        main.slider_X_OuterFrame = new Rectangle(sliderOuterFrametypeName, 1, sliderOuterFrameSettings, sliderOuterFrametypeName, 'white', 0);
+        
+        //3.create slider proportion
+        main.sliderProportion = new Proportion(0, 'slider_X_Proportion', main.width, sliderBarSettings.width, 1);
+        //console.log('Slider Component', main.slider_X_Bar, main.slider_X_OuterFrame, main.sliderProportion);
+    };
+    //將Slider bar和外框加入grid定位搜尋列表
+    this.add_slidersToSeachList = function () {
+        const main = this;
+        main.gridSearchPriorityList.push([main.slider_X_Bar, main.slider_X_OuterFrame]);
+    }
+    //輸出Slider bar到grid上
+    this.refresh_slider = function (ctx) {
+        const main = this;
+        var tmpCtx = ctx || main.gridElement.getContext('2d');
+        main.slider_X_OuterFrame.draw(tmpCtx);
+        main.slider_X_Bar.draw(tmpCtx);
+    };
     /*
         切頁元件
     */
@@ -801,8 +831,8 @@ var Grid = function (obj) {
             main.columnSortNodeList[index].draw(ctx);
         }
     };
-    //14.欄位排序元素click事件綁定
-    this.bind_event_columnSortNode = function () {
+    //14.欄位排序元素元件進入grid定位搜尋列表
+    this.add_columnSortNodesToSeachList = function () {
         const main = this;
         //console.log('columnSortNodeList', main.columnSortNodeList);
         main.gridSearchPriorityList.push(main.columnSortNodeList);
@@ -988,6 +1018,8 @@ var Grid = function (obj) {
         var selectedObject;
         var swapObject;
         var startX, startY, endX, endY;
+        var sliderMoveRange;
+        //畫面滑鼠按下定位
         main.gridElement.onmousedown = function (e) {
             e.stopPropagation();
             if (!flag && (flag = true)) {
@@ -1006,6 +1038,7 @@ var Grid = function (obj) {
                 }
             }
         };//search object when mouse down 
+        //畫面滑鼠移動事件
         main.gridElement.onmousemove = function (e) {
             e.stopPropagation();
             if (flag) {
@@ -1024,7 +1057,7 @@ var Grid = function (obj) {
                                 //紀錄移動間距
                                 main.ResizeBar_rangeList[selectedObject.name] = endX - startX;
                             }
-                            //console.log("Resizer mouse move ...", main.ResizeBar_rangeList);
+                            console.log("Resizer mouse move ...", main.ResizeBar_rangeList[selectedObject.name]);
                             selectedObject.set_position(main.ResizeBar_rangeList[selectedObject.name], 0, false, selectedObject.name);
                             break;
                         case "header":
@@ -1040,39 +1073,65 @@ var Grid = function (obj) {
                                 swapObject.set_backgroundColor('yellow');
                             }
                             break;
+                        case 'sliderBar':
+                            sliderMoveRange = endX - startX;
+                            //超過bar最大範圍
+                            if ((main.sliderProportion.bar.position + main.sliderProportion.bar.min + sliderMoveRange) > main.sliderProportion.bar.max) {
+                                //設定為最大範圍
+                                sliderMoveRange = main.sliderProportion.bar.max - main.sliderProportion.bar.min;
+                                console.log('range max', sliderMoveRange);
+                            }
+                                //低於bar最小範圍
+                            else if ((main.sliderProportion.bar.position + main.sliderProportion.bar.min + sliderMoveRange) < main.sliderProportion.bar.min) {
+                                //設定為最小範圍
+                                sliderMoveRange = -main.sliderProportion.bar.position;
+                                console.log('range min', sliderMoveRange);
+                            }
+                            selectedObject.set_position(sliderMoveRange, 0, false, selectedObject.name);
+                            //sliderMoveRange = Math.ceil((-sliderMoveRange + main.sliderProportion.bar.position) * main.sliderProportion.ratio);
+                            //變更畫布translate位移量
+                            //main.refineNodeTable[0][0].translate.modify(Math.ceil(-(sliderMoveRange + main.sliderProportion.bar.position) * main.sliderProportion.ratio), 0);//畫面和bar移動剛好相反
+                            main.ResizeBarNodeList[0].set_position(Math.ceil(-(sliderMoveRange + main.sliderProportion.bar.position) * main.sliderProportion.ratio), 0, false, selectedObject.name);
+                            console.log('slider range', sliderMoveRange);
+                            break;
                         default:
                             break;
                     }
-                    //執行點擊物件賦予的任務
-                    //selectedObject.run_task(main, selectedObject.index, false);
                     //清除整個Grid畫面並重畫所有元件
                     main.refresh_allDisplayElement();
+                    if (selectedObject.type === 'sliderBar') {
+                        main.refresh_slider();
+                    }
                 }
             }
         };//do selected object task
-        //just change cursor
+        //畫面移動並顯示滑鼠標誌事件
         main.gridElement.addEventListener('mousemove', function changeMouseCursor(e) {
-            e.stopPropagation();
-            var tmpObject;
-            //console.log('currentTarget', e.currentTarget);
-            "url('./CSS/ICON/Drag_and_Drop-128.png')";
-            if (!!(tmpObject = main.searchObject(main.gridSearchPriorityList, e.layerX, e.layerY))) {
-                switch (tmpObject.type) {
-                    case 'ResizeBar':
-                        main.gridElement.style.cursor = "col-resize";
-                        break;
-                    case 'column_sort':
-                        main.gridElement.style.cursor = "pointer";
-                        break;
-                    default:
-                        main.gridElement.style.cursor = "";
+            //若沒有選擇物件則隨者滑鼠移動變更cursor
+            if (!flag) {
+                e.stopPropagation();
+                var tmpObject;
+                //console.log('currentTarget', e.currentTarget);
+                //"url('./CSS/ICON/Drag_and_Drop-128.png')";
+                if (!!(tmpObject = main.searchObject(main.gridSearchPriorityList, e.layerX, e.layerY))) {
+                    switch (tmpObject.type) {
+                        case 'ResizeBar':
+                            main.gridElement.style.cursor = "col-resize";
+                            break;
+                        case 'column_sort':
+                            main.gridElement.style.cursor = "pointer";
+                            break;
+                        default:
+                            main.gridElement.style.cursor = "";
+                    }
+
                 }
-                
-            }
-            else {
-                main.gridElement.style.cursor = ""; //"";
+                else {
+                    main.gridElement.style.cursor = ""; //"";
+                }
             }
         }, false);
+        //畫面滑屬上升事件
         main.gridElement.onmouseup = main.gridElement.onmouseleave = function (e) {
             e.stopPropagation();
             if (flag && !(flag = false)) {
@@ -1081,10 +1140,20 @@ var Grid = function (obj) {
                 if (!!selectedObject) {
                     switch (selectedObject.type) {
                         case "ResizeBar":
+                            //確定變更後的值(若只是單純厡地click一下,值因沒有變動而變undefined)
                             if ((typeof main.ResizeBar_rangeList[selectedObject.name]) !== 'undefined') {
-                                //if (main.ResizeBar_rangeList[selectedObject.name])
+                                //1.header物件更新成永久變化的值
                                 selectedObject.set_position(main.ResizeBar_rangeList[selectedObject.name], 0, true, selectedObject.name);
-                                console.log("Resizer mouse up or out ...", main.ResizeBar_rangeList, selectedObject);
+                                //2-1.更新slider Proportion範圍(抓resize bar最後一根的x軸位置)
+                                main.sliderProportion.change_range(main.ResizeBarNodeList[4].settings.x);
+                                //2-2.更新slider bar 寬度
+                                //console.log('Slider bar', main.sliderProportion.bar.min);
+                                main.slider_X_Bar.set_width(main.sliderProportion.bar.min);
+                                //2-3 更新slider bar位置
+                                
+                                //
+                                main.ResizeBar_rangeList[selectedObject.name] = 0;
+                                //console.log("Resizer mouse up or out ...", main.ResizeBarNodeList[4].settings.x);//, selectedObject);
                             }
                             break;
                         case "column_sort":
@@ -1114,20 +1183,34 @@ var Grid = function (obj) {
                                 });
                             }
                             selectedObject.set_opacity(1);
-                            //更新數據與畫面
+                            //更新數據
                             main.display_data(main.currentPage);
-                            main.refresh_allDisplayElement();
-                            main.refresh_columnSortNode();
                             swapObject = null;
+                            break;
+                        case 'sliderBar':
+                            //刷新resize物件所有的位置資訊
+                            //main.ResizeBarNodeList[0].set_position(Math.ceil(-(sliderMoveRange + main.sliderProportion.bar.position)), 0, true, selectedObject.name);
+                            //更新slider bar的永久位置
+                            selectedObject.set_position(sliderMoveRange, 0, true, selectedObject.name);
+                            //更新slider比例元件下bar的position屬性
+                            main.sliderProportion.set_position(main.sliderProportion.bar.min + main.sliderProportion.bar.position + sliderMoveRange);
+                            
+                            break;
+                        case 'sliderOuterFrame':
+                            var translate_X_Value = main.sliderProportion.set_position(e.layerX);
+                            //main.refineNodeTable[0][0].translate.modify(-translate_X_Value, 0);
+                            console.log('要位移的trabslate值', translate_X_Value);
                             break;
                         default:
                             break;
                     }
-                    //執行點擊物件賦予的任務
-                    //selectedObject.run_task(main, selectedObject.index, true);
+                    
                     //清除Grid畫面並重畫所有元件(可忽略不做)
                     main.refresh_allDisplayElement();
                     main.refresh_columnSortNode();
+                    if (main.sliderProportion.bar.min < main.sliderProportion.bar.max) {
+                        main.refresh_slider();
+                    }
                 }
             }
         };//do selected object task
@@ -1564,6 +1647,11 @@ Rectangle.prototype = new function Rect_prototype(){
             that.tempSettings.height = 0;
         }
     };
+    this.set_width = function (width) {
+        const that = this;
+        that.settings.width = width;
+        //console.log(that.name + '變更width', that.settings.width);
+    }
     //設置下一個物件(原型:Rectangle)
     this.set_nextObj = function (obj){
         if (!(obj instanceof Rectangle)) {
@@ -2157,43 +2245,46 @@ function Proportion(index,type,origin_range,remap_max_range,step) {
     //滑塊物件
     this.bar = new function () {
         //映射的最大範圍(定值)
-        this.max_range = +remap_max_range;
-        //Bar範圍(依據原始範圍之後的變化跟者變化)
-        this.range = +remap_max_range;
+        this.max = +remap_max_range;
+        //映設的bar最小寬度(依據原始範圍之後的變化跟者變化)
+        this.min = +remap_max_range;
         //位置(包含Bar範圍寬度)
         this.position = +remap_max_range;
     };
     //每步的間距差
     this.step = step || 1;
-    //X軸最小範圍
+    //最小範圍
     this.min = this._origin_Width;
-    //X軸最大範圍
+    //最大範圍
     this.max = this._origin_Width;
-    //依據變動寬度映射bar寬度比例
+    //依據變動寬度映射bar寬度比例(new_float_range:新的變動寬度)
     this.change_range = function (new_float_range) {
         const that = this;
-        //0.設定新的變動寬度
-        that.float_range = new_float_range;
-        //1.取得bar新的寬度比例
-        var new_bar_range = ((that.origin_range * that.bar.max_range) / that.float_range);//x1:y1 = x2:y2 => x2 = (x1*y2)/y1
-        //2.刷新bar位置的値(需要用舊的bar range値與新的bar range值來換算,所以先不覆蓋)
-        that._refresh_position(new_bar_range);
-        //3.設定新的bar寬度
-        that.bar.range = new_bar_range;
-        console.log('變動後的bar range', that.bar.range, 'max range',that.bar.max_range);
-        //3.刷新寬度比例
-        that._set_ratio();
+        //超過最初寬度才做變更
+        //if (new_float_range >= that.origin_range) {
+            //0.設定新的變動寬度
+            that.float_range = new_float_range;
+            //1.取得bar新的寬度比例
+            var new_bar_range = Math.ceil((that.origin_range * that.bar.max) / that.float_range);//x1:y1 = x2:y2 => x2 = (x1*y2)/y1
+            //2.刷新bar位置的値(需要用舊的bar range値與新的bar range值來換算,所以先不覆蓋)
+            that._refresh_position(new_bar_range);
+            //3.設定新的bar寬度
+            that.bar.min = new_bar_range;
+            console.log('變動後的bar min', that.bar.min, 'bar max', that.bar.max);
+            //3.刷新寬度比例
+            that._set_ratio();
+        //}
     };
-    //設定bar位置並取得扣除bar寬度後的位置
+    //設定bar位置並取得扣除bar寬度後的位置(val是包含bar min值)
     this.set_position = function (val) {
         const that = this;
-        const realPosition = val - that.bar.range;
-        if (realPosition >= 0 && val <= that.bar.max_range) {
-            //位移量
+        const realPosition = val - that.bar.min;
+        if (realPosition >= 0 && val <= that.bar.max) {
+            //位移量(扣除bar寬度的值)
             that.bar.position = realPosition;
         }
         else {
-            console.log('扣除寬度後非範圍內 ', val, that.bar.range);
+            console.log('val is invalid', val);
             that.bar.position = 0;
         }
         return that.bar.position;
@@ -2208,11 +2299,11 @@ function Proportion(index,type,origin_range,remap_max_range,step) {
     this._refresh_position = function (new_bar_range) {
         const that = this;
         //x1:y1 = x2:y2; 紀錄位置(舊):bar的range(舊)和max Range間距差 = 紀錄位置(新):bar的range(新)和max Range間距差
-        console.log('變更前的起始位置', that.bar.position);
+        console.log('變更前的bar position', that.bar.position, '新的bar min', new_bar_range);
         //new bar position = ((old bar position) * ()
-        that.bar.position = (that.bar.position * (that.bar.max_range - new_bar_range)) / (that.bar.max_range - that.bar.range);
-        //if is NaN then position = 0
-        isNaN(that.bar.position) && (that.bar.position = 0);
-        console.log('變更後的起始位置', that.bar.position);
+        that.bar.position = Math.ceil((that.bar.position * (that.bar.max - new_bar_range)) / (that.bar.max - that.bar.min));
+        //if position is NaN or Infinity then position = 0
+        (isNaN(that.bar.position) || !isFinite(that.bar.position)) && (that.bar.position = 0);
+        console.log('變更後的bar position', that.bar.position);
     };
 };
