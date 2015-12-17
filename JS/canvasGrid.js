@@ -292,9 +292,12 @@ var Grid = function (obj) {
     //輸出Slider bar到grid上
     this.refresh_slider = function (ctx) {
         const main = this;
-        var tmpCtx = ctx || main.gridElement.getContext('2d');
-        main.slider_X_OuterFrame.draw(tmpCtx);
-        main.slider_X_Bar.draw(tmpCtx);
+        //比例計算的最大範圍若超過最小範圍才畫出(即grid的每個cell被放大後的總寬度必須比畫布寬度大)
+        if (main.sliderProportion.bar.max > main.sliderProportion.bar.min) {
+            var tmpCtx = ctx || main.gridElement.getContext('2d');
+            main.slider_X_OuterFrame.draw(tmpCtx);
+            main.slider_X_Bar.draw(tmpCtx);
+        }
     };
     /*
         切頁元件
@@ -1099,9 +1102,9 @@ var Grid = function (obj) {
                     }
                     //清除整個Grid畫面並重畫所有元件
                     main.refresh_allDisplayElement();
-                    if (selectedObject.type === 'sliderBar') {
+                    //if (selectedObject.type === 'sliderBar') {
                         main.refresh_slider();
-                    }
+                    //}
                 }
             }
         };//do selected object task
@@ -2271,7 +2274,7 @@ function Proportion(index,type,origin_range,remap_max_range,step) {
             //3.設定新的bar寬度
             that.bar.min = new_bar_range;
             console.log('變動後的bar min', that.bar.min, 'bar max', that.bar.max);
-            //3.刷新寬度比例
+            //4.刷新寬度比例
             that._set_ratio();
         //}
     };
