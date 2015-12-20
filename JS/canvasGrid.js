@@ -263,9 +263,9 @@ var Grid = function (obj) {
         //slider shape 位置與大小資訊
         const sliderBarSettings = new function () {
             this.x = 0;
-            this.y = main.height - 5;
+            this.y = main.height - 15;
             this.width = main.width;
-            this.height = 5;
+            this.height = 15;
         };
         const sliderOuterFrameSettings = new function () {
             this.x = 0;
@@ -276,7 +276,18 @@ var Grid = function (obj) {
 
         //1.create slider bar
         main.slider_X_Bar = new Rectangle(sliderBarTypeName, 0, sliderBarSettings, sliderBarTypeName, 'greenyellow', 0);
-        
+        //(覆蓋原來的定位方法:此物件不需要加入translate長度)檢查是否在物件的範圍內
+        main.slider_X_Bar.hitCheck = function (x, y) {
+            const that = this;
+            //判斷長方形範圍
+            if (x > (that.settings.x + that.tempSettings.x) &&
+               x < (that.settings.x + that.tempSettings.x + that.settings.width + that.tempSettings.width) &&
+               y > (that.settings.y + that.tempSettings.y) &&
+               y < (that.settings.y + that.tempSettings.y + that.settings.height + that.tempSettings.height)) {
+                return true;
+            }
+            return false;
+        };
         //2.create the outer frame
         main.slider_X_OuterFrame = new Rectangle(sliderOuterFrametypeName, 1, sliderOuterFrameSettings, sliderOuterFrametypeName, 'white', 0);
         
@@ -1030,6 +1041,8 @@ var Grid = function (obj) {
                 startY = e.layerY;
                 //依據座標檢查搜尋列表並回傳點擊的物件(沒找到則為undefined)
                 selectedObject = main.searchObject(main.gridSearchPriorityList, startX, startY);
+                console.log('mouse down startX', startX, 'startY', startY);
+                console.log('selected object', selectedObject);
                 //檢查選取的物件種類是否為header
                 if (!!selectedObject && selectedObject.type === 'header') {
                     //change dom cursor
@@ -1079,22 +1092,18 @@ var Grid = function (obj) {
                         case 'sliderBar':
                             sliderMoveRange = endX - startX;
                             //超過bar最大範圍
-                            if ((main.sliderProportion.bar.position + main.sliderProportion.bar.min + sliderMoveRange) > main.sliderProportion.bar.max) {
+                            if ((main.sliderProportion.bar.position + sliderMoveRange) > main.sliderProportion.bar.max) {
                                 //設定為最大範圍
-                                sliderMoveRange = main.sliderProportion.bar.max - main.sliderProportion.bar.min;
-                                console.log('range max', sliderMoveRange);
+                                //sliderMoveRange = main.sliderProportion.bar.max - main.sliderProportion.bar.min;
+                                //console.log('range max', sliderMoveRange);
                             }
-                                //低於bar最小範圍
-                            else if ((main.sliderProportion.bar.position + main.sliderProportion.bar.min + sliderMoveRange) < main.sliderProportion.bar.min) {
-                                //設定為最小範圍
-                                sliderMoveRange = -main.sliderProportion.bar.position;
-                                console.log('range min', sliderMoveRange);
-                            }
+                            sliderMoveRange = main.sliderProportion.get_range(sliderMoveRange);
+                            //slider bar object
                             selectedObject.set_position(sliderMoveRange, 0, false, selectedObject.name);
                             //sliderMoveRange = Math.ceil((-sliderMoveRange + main.sliderProportion.bar.position) * main.sliderProportion.ratio);
                             //變更畫布translate位移量
-                            //main.refineNodeTable[0][0].translate.modify(Math.ceil(-(sliderMoveRange + main.sliderProportion.bar.position) * main.sliderProportion.ratio), 0);//畫面和bar移動剛好相反
-                            main.ResizeBarNodeList[0].set_position(Math.ceil(-(sliderMoveRange + main.sliderProportion.bar.position) * main.sliderProportion.ratio), 0, false, selectedObject.name);
+                            main.refineNodeTable[0][0].translate.modify(Math.ceil(-(sliderMoveRange /*+ main.sliderProportion.bar.position*/) * main.sliderProportion.ratio), 0);//畫面和bar移動剛好相反
+                            //main.ResizeBarNodeList[0].set_position(Math.ceil(-(sliderMoveRange /*+ main.sliderProportion.bar.position*/) * main.sliderProportion.ratio), 0, false, selectedObject.name);
                             console.log('slider range', sliderMoveRange);
                             break;
                         default:
@@ -1102,38 +1111,11 @@ var Grid = function (obj) {
                     }
                     //清除整個Grid畫面並重畫所有元件
                     main.refresh_allDisplayElement();
-                    //if (selectedObject.type === 'sliderBar') {
-                        main.refresh_slider();
-                    //}
+
+                    main.refresh_slider();
                 }
             }
         };//do selected object task
-        //畫面移動並顯示滑鼠標誌事件
-        main.gridElement.addEventListener('mousemove', function changeMouseCursor(e) {
-            //若沒有選擇物件則隨者滑鼠移動變更cursor
-            if (!flag) {
-                e.stopPropagation();
-                var tmpObject;
-                //console.log('currentTarget', e.currentTarget);
-                //"url('./CSS/ICON/Drag_and_Drop-128.png')";
-                if (!!(tmpObject = main.searchObject(main.gridSearchPriorityList, e.layerX, e.layerY))) {
-                    switch (tmpObject.type) {
-                        case 'ResizeBar':
-                            main.gridElement.style.cursor = "col-resize";
-                            break;
-                        case 'column_sort':
-                            main.gridElement.style.cursor = "pointer";
-                            break;
-                        default:
-                            main.gridElement.style.cursor = "";
-                    }
-
-                }
-                else {
-                    main.gridElement.style.cursor = ""; //"";
-                }
-            }
-        }, false);
         //畫面滑屬上升事件
         main.gridElement.onmouseup = main.gridElement.onmouseleave = function (e) {
             e.stopPropagation();
@@ -1192,11 +1174,11 @@ var Grid = function (obj) {
                             break;
                         case 'sliderBar':
                             //刷新resize物件所有的位置資訊
-                            //main.ResizeBarNodeList[0].set_position(Math.ceil(-(sliderMoveRange + main.sliderProportion.bar.position)), 0, true, selectedObject.name);
+                            //main.ResizeBarNodeList[0].set_position(Math.ceil(-(sliderMoveRange /*+ main.sliderProportion.bar.position*/)), 0, true, selectedObject.name);
                             //更新slider bar的永久位置
                             selectedObject.set_position(sliderMoveRange, 0, true, selectedObject.name);
-                            //更新slider比例元件下bar的position屬性
-                            main.sliderProportion.set_position(main.sliderProportion.bar.min + main.sliderProportion.bar.position + sliderMoveRange);
+                            //更新slider比例元件下bar的position屬性(sliderMoveRange:移動值)
+                            main.sliderProportion.set_position(sliderMoveRange);
                             
                             break;
                         case 'sliderOuterFrame':
@@ -1209,14 +1191,38 @@ var Grid = function (obj) {
                     }
                     
                     //清除Grid畫面並重畫所有元件(可忽略不做)
-                    main.refresh_allDisplayElement();
-                    main.refresh_columnSortNode();
-                    if (main.sliderProportion.bar.min < main.sliderProportion.bar.max) {
-                        main.refresh_slider();
-                    }
+                    main.refresh_allDisplayElement();   //1.清除grid畫面並重繪cell物件
+                    main.refresh_columnSortNode();      //2.重繪搜尋的三角型ICON
+                    main.refresh_slider();              //3.重繪slider bar
                 }
             }
         };//do selected object task
+        //畫面移動並顯示滑鼠標誌事件
+        main.gridElement.addEventListener('mousemove', function changeMouseCursor(e) {
+            //若沒有選擇物件則隨者滑鼠移動變更cursor
+            if (!flag) {
+                e.stopPropagation();
+                var tmpObject;
+                //console.log('currentTarget', e.currentTarget);
+                //"url('./CSS/ICON/Drag_and_Drop-128.png')";
+                if (!!(tmpObject = main.searchObject(main.gridSearchPriorityList, e.layerX, e.layerY))) {
+                    switch (tmpObject.type) {
+                        case 'ResizeBar':
+                            main.gridElement.style.cursor = "col-resize";
+                            break;
+                        case 'column_sort':
+                            main.gridElement.style.cursor = "pointer";
+                            break;
+                        default:
+                            main.gridElement.style.cursor = "";
+                    }
+
+                }
+                else {
+                    main.gridElement.style.cursor = ""; //"";
+                }
+            }
+        }, false);
     };
     //切頁元件綁定事件(Closure)
     this.bind_event_pageControl = function () {
@@ -1298,6 +1304,7 @@ Grid.prototype.shared = new function Grid_prototype() {
     Component Part
 */
 //triangle
+var translate = new canvas_translate(0, 0);
 function Triangle(name, index, settings, type, backgroundColor) {
     //名稱
     this.name = name;
@@ -1476,6 +1483,8 @@ RegularTriangle.prototype = new function RegularTriangle_prototype() {
             that.tempSettings.y3 = 0;
         }
     };
+    //畫布位移用的參數(執行modify方法一次則全部背new出來的物件全部一起變更)
+    this.translate = translate;
     //變更大小
     this.set_size = function (x, y, forever) {
 
@@ -1492,43 +1501,45 @@ RegularTriangle.prototype = new function RegularTriangle_prototype() {
         ctx.fillStyle = color || that.backgroundColor;
         ctx.beginPath();
         ctx.moveTo((that.settings.x1 +
-                    that.tempSettings.x1),
+                    that.tempSettings.x1 + that.translate.x),
                    (that.settings.y1 +
                     that.tempSettings.y1));
         ctx.lineTo((that.settings.x2 +
-                   that.tempSettings.x2),
+                   that.tempSettings.x2 + that.translate.x),
                    (that.settings.y2 +
-                   that.tempSettings.y2));
+                   that.tempSettings.y2 ));
         ctx.lineTo((that.settings.x3 +
-                   that.tempSettings.x3),
+                   that.tempSettings.x3 + that.translate.x),
                    (that.settings.y3 +
                    that.tempSettings.y1));
         ctx.closePath();
         ctx.fill();
         ctx.restore();
     };
+    //畫布位移用的參數(執行modify方法一次則全部背new出來的物件全部一起變更)
+    this.translate = translate;
     //檢查是否在物件的範圍內
     this.hitCheck = function (x, y) {
         const that = this;
         //公式
-        var a = (that.settings.x1 + that.tempSettings.x1) *
+        var a = (that.settings.x1 + that.tempSettings.x1 + that.translate.x) *
             ((that.settings.y2 + that.tempSettings.y2) -
              (that.settings.y3 + that.tempSettings.y3)) +
-            (that.settings.x2 + that.tempSettings.x2) *
+            (that.settings.x2 + that.tempSettings.x2 + that.translate.x) *
             ((that.settings.y3 + that.tempSettings.y3) -
              (that.settings.y1 + that.tempSettings.y1)) +
-            (that.settings.x3 + that.tempSettings.x3) *
+            (that.settings.x3 + that.tempSettings.x3 + that.translate.x) *
             ((that.settings.y1 + that.tempSettings.y1) -
              (that.settings.y2 + that.tempSettings.y2));
-        var b = (that.settings.x1 - that.tempSettings.x1) *
+        var b = (that.settings.x1 - that.tempSettings.x1 + that.translate.x) *
             (y - (that.settings.y3 + that.tempSettings.y3)) +
             x * ((that.settings.y3 + that.tempSettings.y3) -
                (that.settings.y1 + that.tempSettings.y1)) +
-            (that.settings.x3 + that.tempSettings.x3) *
+            (that.settings.x3 + that.tempSettings.x3 + that.translate.x) *
             ((that.settings.y1 + that.tempSettings.y1) - y);
-        var c = (that.settings.x1 - that.tempSettings.x1) *
+        var c = (that.settings.x1 - that.tempSettings.x1 + that.translate.x) *
             ((that.settings.y2 + that.tempSettings.y2) - y) +
-            (that.settings.x2 + that.tempSettings.x2) *
+            (that.settings.x2 + that.tempSettings.x2 + that.translate.x) *
             (y - (that.settings.y1 + that.tempSettings.y1)) +
             x * ((that.settings.y1 + that.tempSettings.y1) -
                (that.settings.y2 + that.tempSettings.y2));
@@ -1654,7 +1665,9 @@ Rectangle.prototype = new function Rect_prototype(){
         const that = this;
         that.settings.width = width;
         //console.log(that.name + '變更width', that.settings.width);
-    }
+    };
+    //畫布位移用的參數(執行modify方法一次則全部背new出來的物件全部一起變更)
+    this.translate = translate;
     //設置下一個物件(原型:Rectangle)
     this.set_nextObj = function (obj){
         if (!(obj instanceof Rectangle)) {
@@ -1709,13 +1722,13 @@ Rectangle.prototype = new function Rect_prototype(){
         }
         //console.log(that.x,that.y,that.width,that.height);
     };
-    //[棄用]畫圖
+    //畫圖
     this.draw = function (ctx, color) {
         const that = this;
         ctx.save();
         ctx.fillStyle = color || that.backgroundColor;
-        ctx.fillRect((that.settings.x + that.tempSettings.x) + that.border,
-                     (that.settings.y + that.tempSettings.y) + that.border,
+        ctx.fillRect((that.settings.x + that.tempSettings.x) /*+ that.border + that.translate.x*/,
+                     (that.settings.y + that.tempSettings.y) /*+ that.border + that.translate.y*/,
                      (that.settings.width + that.tempSettings.width) - (that.border * 2),
                      (that.settings.height + that.tempSettings.height) - (that.border * 2));
         /* draw infonation */
@@ -1731,10 +1744,10 @@ Rectangle.prototype = new function Rect_prototype(){
     this.hitCheck = function (x, y) {
         const that = this;
         //判斷長方形範圍
-        if (x > (that.settings.x + that.tempSettings.x) &&
-           x < (that.settings.x + that.tempSettings.x + that.settings.width + that.tempSettings.width) &&
-           y > (that.settings.y + that.tempSettings.y) &&
-           y < (that.settings.y + that.tempSettings.y + that.settings.height + that.tempSettings.height)) {
+        if (x > (that.settings.x + that.tempSettings.x + that.translate.x) &&
+           x < (that.settings.x + that.tempSettings.x + that.translate.x + that.settings.width + that.tempSettings.width) &&
+           y > (that.settings.y + that.tempSettings.y + +that.translate.y) &&
+           y < (that.settings.y + that.tempSettings.y + that.translate.y + that.settings.height + that.tempSettings.height)) {
             return true;
         }
         return false;
@@ -1812,8 +1825,8 @@ Cell_canvas.prototype = new function Cell_prototype() {
     */
     //pseudo dom name
     this.name = "";
-    //畫布位移用的參數
-    this.translate = new canvas_translate(0, 0);
+    //畫布位移用的參數(執行modify方法一次則全部背new出來的物件全部一起變更)
+    this.translate = translate;
     //位置與大小的數據
     this.style = new function () {
         //寬度
@@ -1859,6 +1872,9 @@ Cell_canvas.prototype = new function Cell_prototype() {
             ctx.globalAlpha = that.style.opacity;
         }
         ctx.fillStyle = that.style.backgroundColor;
+        if ((that.style.left + that.style.border + that.tempStyle.left) < 0) {
+            console.log('X軸為負值', (that.style.left + that.style.border + that.tempStyle.left));
+        }
         ctx.fillRect((that.style.left + that.style.border + that.tempStyle.left),
             (that.style.top + that.style.border + that.tempStyle.top),
             (that.style.width - (that.style.border * 2) + that.tempStyle.width),
@@ -2108,7 +2124,7 @@ function canvas_translate(x, y) {
 };
 //用來變更所有instance的値
 canvas_translate.prototype.modify = function (x, y) {
-    //console.log("變更translate =>x:" + x + " y:" + y);
+    console.log("變更translate =>x:" + x + " y:" + y);
     this.x = +x;
     this.y = +y;
 };
@@ -2260,53 +2276,84 @@ function Proportion(index,type,origin_range,remap_max_range,step) {
     this.min = this._origin_Width;
     //最大範圍
     this.max = this._origin_Width;
+    //init flag
+    this.init_flag = false;
     //依據變動寬度映射bar寬度比例(new_float_range:新的變動寬度)
     this.change_range = function (new_float_range) {
         const that = this;
-        //超過最初寬度才做變更
-        //if (new_float_range >= that.origin_range) {
-            //0.設定新的變動寬度
-            that.float_range = new_float_range;
-            //1.取得bar新的寬度比例
-            var new_bar_range = Math.ceil((that.origin_range * that.bar.max) / that.float_range);//x1:y1 = x2:y2 => x2 = (x1*y2)/y1
-            //2.刷新bar位置的値(需要用舊的bar range値與新的bar range值來換算,所以先不覆蓋)
-            that._refresh_position(new_bar_range);
-            //3.設定新的bar寬度
-            that.bar.min = new_bar_range;
-            console.log('變動後的bar min', that.bar.min, 'bar max', that.bar.max);
-            //4.刷新寬度比例
-            that._set_ratio();
-        //}
+        //0.設定新的變動寬度
+        that.float_range = new_float_range;
+        //1.取得bar新的寬度比例
+        var new_bar_range = Math.ceil((that.origin_range * that.bar.max) / that.float_range);//x1:y1 = x2:y2 => x2 = (x1*y2)/y1
+        //2.刷新bar位置和min的値(需要用舊的bar range値與新的bar range值來換算)
+        that._refresh_position(new_bar_range);
+        console.log('變動後的bar min', that.bar.min, 'bar max', that.bar.max);
+        //4.刷新寬度比例
+        that._set_ratio();
     };
-    //設定bar位置並取得扣除bar寬度後的位置(val是包含bar min值)
+    //設定bar位置並取得扣除bar寬度後的位置(val是不包含bar min值)
     this.set_position = function (val) {
         const that = this;
-        const realPosition = val - that.bar.min;
-        if (realPosition >= 0 && val <= that.bar.max) {
-            //位移量(扣除bar寬度的值)
-            that.bar.position = realPosition;
+        if ((val + that.bar.position)  > that.bar.max) {
+            //max
+            that.bar.position = that.bar.max;
+            console.log('var over max');
+        }
+        else if ((val + that.bar.position) < that.bar.min) {
+            //min
+            that.bar.position = that.bar.min;
+            console.log('var over min', val, that.bar.min);
         }
         else {
-            console.log('val is invalid', val);
-            that.bar.position = 0;
+            //當前bar位置 = 位移量 + 上次的位移量
+            that.bar.position += val;
         }
         return that.bar.position;
     };
+    //取得比例bar範圍內的值( 0 ~ (bar.max - bar.min) )
+    this.get_range = function (val) {
+        const that = this;
+        var result;
+        if ((that.bar.position + val) > that.bar.max) {
+            //max range
+            result = that.bar.max - that.bar.position;
+        }
+        else if ((that.bar.position + val) < that.bar.min) {
+            //min range
+            result = that.bar.position - that.bar.min;
+        }
+        else {
+            result = val;
+        }
+        console.log('min ', 0, ' max', (that.bar.max - that.bar.min), ' range', result);
+        return result;
+    }
     //刷新寬度比例(新的寬度/原始的寬度)
     this._set_ratio = function () {
         const that = this;
         that.ratio = that.float_range / that.origin_range;
         console.log('比例變更為', that.ratio, '浮動範圍',that.float_range ,'原始範圍', that.origin_range);
     };
-    //依據新的寬度刷新bar起始位置
+    //刷新bar起始位置與bar min值
     this._refresh_position = function (new_bar_range) {
         const that = this;
+        //bar.max is fixed and bar.min is float
+        const N = that.bar.max - that.bar.position;//old position 
+        const M = that.bar.position - that.bar.min;//old position and old bar min
         //x1:y1 = x2:y2; 紀錄位置(舊):bar的range(舊)和max Range間距差 = 紀錄位置(新):bar的range(新)和max Range間距差
         console.log('變更前的bar position', that.bar.position, '新的bar min', new_bar_range);
-        //new bar position = ((old bar position) * ()
-        that.bar.position = Math.ceil((that.bar.position * (that.bar.max - new_bar_range)) / (that.bar.max - that.bar.min));
-        //if position is NaN or Infinity then position = 0
-        (isNaN(that.bar.position) || !isFinite(that.bar.position)) && (that.bar.position = 0);
+        //(originPosition-bar.min) : (bar.fixed_Max - originPosition) = (? - newBar.min):( bar.fixed_Max - ?)
+        that.bar.position = ((M * that.bar.max) + (N * new_bar_range)) / (N + M);
+        //setting the bar new min range
+        that.bar.min = new_bar_range;
+        //是否為第一次變更
+        if (!that.init_flag && (that.init_flag = true)) {
+            //將position修改為bar.min值做歸零動作(default: bar.max)
+            that.bar.position = that.bar.min;
+            console.log('position 歸零', that.bar.position);
+        }
+        //if position is NaN or Infinity then position = bar.min(回歸起始點)
+        (isNaN(that.bar.position) || !isFinite(that.bar.position)) && (that.bar.position = that.bar.min);
         console.log('變更後的bar position', that.bar.position);
     };
 };
