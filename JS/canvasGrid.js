@@ -288,11 +288,13 @@ var Grid = function (obj) {
             }
             return false;
         };
+        //(覆蓋原來的位移方法:此物件不需要加入translate長度)
+        main.slider_X_Bar.translate = new canvas_translate(0, 0);
         //2.create the outer frame
         main.slider_X_OuterFrame = new Rectangle(sliderOuterFrametypeName, 1, sliderOuterFrameSettings, sliderOuterFrametypeName, 'white', 0);
         
         //3.create slider proportion
-        main.sliderProportion = new Proportion(0, 'slider_X_Proportion', main.width, sliderBarSettings.width, 1);
+        main.sliderProportion = new Proportion(0, 'slider_X_Proportion', main.width, sliderBarSettings.width);
         //console.log('Slider Component', main.slider_X_Bar, main.slider_X_OuterFrame, main.sliderProportion);
     };
     //將Slider bar和外框加入grid定位搜尋列表
@@ -304,7 +306,7 @@ var Grid = function (obj) {
     this.refresh_slider = function (ctx) {
         const main = this;
         //比例計算的最大範圍若超過最小範圍才畫出(即grid的每個cell被放大後的總寬度必須比畫布寬度大)
-        if (main.sliderProportion.bar.max > main.sliderProportion.bar.min) {
+        if (main.sliderProportion.origin_val < main.sliderProportion.float_val) {
             var tmpCtx = ctx || main.gridElement.getContext('2d');
             main.slider_X_OuterFrame.draw(tmpCtx);
             main.slider_X_Bar.draw(tmpCtx);
@@ -1091,18 +1093,13 @@ var Grid = function (obj) {
                             break;
                         case 'sliderBar':
                             sliderMoveRange = endX - startX;
-                            //超過bar最大範圍
-                            if ((main.sliderProportion.bar.position + sliderMoveRange) > main.sliderProportion.bar.max) {
-                                //設定為最大範圍
-                                //sliderMoveRange = main.sliderProportion.bar.max - main.sliderProportion.bar.min;
-                                //console.log('range max', sliderMoveRange);
-                            }
-                            sliderMoveRange = main.sliderProportion.get_range(sliderMoveRange);
+                            //取得slider的合法範圍
+                            sliderMoveRange = main.sliderProportion.get_valid_position(sliderMoveRange);
                             //slider bar object
                             selectedObject.set_position(sliderMoveRange, 0, false, selectedObject.name);
                             //sliderMoveRange = Math.ceil((-sliderMoveRange + main.sliderProportion.bar.position) * main.sliderProportion.ratio);
                             //變更畫布translate位移量
-                            main.refineNodeTable[0][0].translate.modify(Math.ceil(-(sliderMoveRange /*+ main.sliderProportion.bar.position*/) * main.sliderProportion.ratio), 0);//畫面和bar移動剛好相反
+                            main.refineNodeTable[0][0].translate.modify(Math.ceil(-sliderMoveRange * main.sliderProportion.ratio), 0);//畫面和bar移動剛好相反
                             //main.ResizeBarNodeList[0].set_position(Math.ceil(-(sliderMoveRange /*+ main.sliderProportion.bar.position*/) * main.sliderProportion.ratio), 0, false, selectedObject.name);
                             console.log('slider range', sliderMoveRange);
                             break;
@@ -1133,9 +1130,9 @@ var Grid = function (obj) {
                                 main.sliderProportion.change_size(main.ResizeBarNodeList[4].settings.x);
                                 //2-2.更新slider bar 寬度
                                 //console.log('Slider bar', main.sliderProportion.bar.min);
-                                main.slider_X_Bar.set_width(main.sliderProportion.bar.min);
+                                main.slider_X_Bar.set_width(main.sliderProportion.bar.width);
                                 //2-3 更新slider bar位置
-                                
+                                main.slider_X_Bar.set_X(main.sliderProportion.range.currentPosition);
                                 //
                                 main.ResizeBar_rangeList[selectedObject.name] = 0;
                                 //console.log("Resizer mouse up or out ...", main.ResizeBarNodeList[4].settings.x);//, selectedObject);
@@ -2253,7 +2250,7 @@ Settings_RegularTriangle.prototype = new function () {
     [Number]{origin_range}:原始寬度值
     [Number]{remap_max_range}:映射bar的最大固定寬度值
  */
-function Proportion(index,type,origin_range,remap_max_range,step) {
+function Proportion2(index,type,origin_range,remap_max_range,step) {
     //object point
     const that = this;
     //索引
@@ -2382,7 +2379,11 @@ function Proportion(index,type,origin_range,remap_max_range,step) {
     
 };
 //new test proportion object
-function Proportion2(origin_range, remap_max_range) {
+function Proportion(index,type, origin_range, remap_max_range) {
+    //物件索引
+    this.index = index;
+    //物件類別
+    this.type = type || 'proportion';
     //原始値
     this.origin_val = origin_range;
     //變動値
@@ -2406,7 +2407,7 @@ function Proportion2(origin_range, remap_max_range) {
     //變更範圍最大値 //需再補入委派的方法與物件
     this.change_size = function (new_float_val) {
         const that = this;
-        
+
         //0.設定本次的變動寬度
         that.float_val = new_float_val;
         //1.設定bar新的width
@@ -2418,25 +2419,41 @@ function Proportion2(origin_range, remap_max_range) {
         //4.更新比例値
         that.ratio = that.get_ratio();
     };
-    //短暫連續的變動
-    this.change_position = function (range) {
+    //暫時變動range位置(current position + deviation)
+    this.get_valid_position = function (range) {
         const that = this;
         var tmp;
-        tmp = that.range.currentPosition + range;
-        //tmp去做變更
+        if ((that.range.currentPosition + range) > that.range.max) {
+            return that.range.max - that.range.currentPosition;
+        }
+        else if ((that.range.currentPosition + range) < that.range.min) {
+            return -that.range.currentPosition;
+        }
+        else {
+            return that.range.currentPosition + range;
+        }
     }
-    //永久變動
-    this.add_position = function (range) {
+    //永久變動range位置
+    this.set_position = function (range) {
         const that = this;
-        //累計變動
-        that.range.currentPosition += range;
-        //currentPosition去做變更
+        //超過最大範圍
+        if ((that.range.currentPosition + range) > that.range.max) {
+            that.range.currentPosition = that.range.max;
+        }
+            //低於最小範圍
+        else if ((that.range.currentPosition + range) < that.range.min) {
+            that.range.currentPosition = 0;
+        }
+        else {
+            //累計變動
+            that.range.currentPosition += range;
+        }
     };
     //依據原始値與變更値取得比例値
     this.get_ratio = function () {
         const that = this;
         var ratio = that.float_val / that.origin_val;
-        console.log('比例:', ratio, ' 浮動範圍:',that.float_val ,' 原始範圍:', that.origin_val);
+        console.log('比例:', ratio, ' 浮動範圍:', that.float_val, ' 原始範圍:', that.origin_val);
         return ratio;
     };
     //設定bar新的width
@@ -2463,7 +2480,7 @@ function Proportion2(origin_range, remap_max_range) {
             that.range.currentPosition = 0;
         }
         else {
-            that.range.currentPosition = that.range.currentPosition * (that.range.max / that.range.last_max);
+            that.range.currentPosition = Math.ceil(that.range.currentPosition * (that.range.max / that.range.last_max));
         }
     };
-}
+};
