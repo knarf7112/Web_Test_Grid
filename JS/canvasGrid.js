@@ -1130,7 +1130,7 @@ var Grid = function (obj) {
                                 //1.header物件更新成永久變化的值
                                 selectedObject.set_position(main.ResizeBar_rangeList[selectedObject.name], 0, true, selectedObject.name);
                                 //2-1.更新slider Proportion範圍(抓resize bar最後一根的x軸位置)
-                                main.sliderProportion.change_range(main.ResizeBarNodeList[4].settings.x);
+                                main.sliderProportion.change_size(main.ResizeBarNodeList[4].settings.x);
                                 //2-2.更新slider bar 寬度
                                 //console.log('Slider bar', main.sliderProportion.bar.min);
                                 main.slider_X_Bar.set_width(main.sliderProportion.bar.min);
@@ -1665,6 +1665,11 @@ Rectangle.prototype = new function Rect_prototype(){
         const that = this;
         that.settings.width = width;
         //console.log(that.name + '變更width', that.settings.width);
+    };
+    //設定物件的X軸位置
+    this.set_X = function (x) {
+        const that = this;
+        that.settings.x = x;
     };
     //畫布位移用的參數(執行modify方法一次則全部背new出來的物件全部一起變更)
     this.translate = translate;
@@ -2259,8 +2264,10 @@ function Proportion(index,type,origin_range,remap_max_range,step) {
     this.origin_range = +origin_range;
     //變動的值
     this.float_range = 0;
+    //上次變動的值
+    this.last_float_range = 0;
     //比率:  float_range /origin_range
-    this.ratio = this.float_range / this.origin_range;
+    this.ratio = 1;
     //滑塊物件
     this.bar = new function () {
         //映射的最大範圍(定值)
@@ -2270,23 +2277,38 @@ function Proportion(index,type,origin_range,remap_max_range,step) {
         //位置(包含Bar範圍寬度)
         this.position = +remap_max_range;
     };
+    //
+    this.range = new function () {
+        this.max = 0;
+        this.min = 0;
+        this.position = 0;
+    };
+    //
+    this.get_range_max = function (bar_max, new_bar_min) {
+        const that = this;
+        return bar_max - new_bar_min;
+    }
     //每步的間距差
     this.step = step || 1;
-    //最小範圍
-    this.min = this._origin_Width;
-    //最大範圍
-    this.max = this._origin_Width;
+    //最小値
+    this.min = 0;
+    //最大値
+    this.max = 0;
+    //目前位置
+    this.currentPosition = 0;
     //init flag
     this.init_flag = false;
     //依據變動寬度映射bar寬度比例(new_float_range:新的變動寬度)
-    this.change_range = function (new_float_range) {
+    this.change_size = function (new_float_range, deleObj, deleFunc_changeSize,deleFunc_changeX) {
         const that = this;
-        //0.設定新的變動寬度
+        //將目前變動値變成上次變動値
+        that.last_float_range = that.float_range;
+        //0.設定本次的變動寬度
         that.float_range = new_float_range;
         //1.取得bar新的寬度比例
-        var new_bar_range = Math.ceil((that.origin_range * that.bar.max) / that.float_range);//x1:y1 = x2:y2 => x2 = (x1*y2)/y1
+        var new_min = Math.ceil((that.origin_range * that.bar.max) / that.float_range);//x1:y1 = x2:y2 => x2 = (x1*y2)/y1
         //2.刷新bar位置和min的値(需要用舊的bar range値與新的bar range值來換算)
-        that._refresh_position(new_bar_range);
+        that._refresh_position(new_min);
         console.log('變動後的bar min', that.bar.min, 'bar max', that.bar.max);
         //4.刷新寬度比例
         that._set_ratio();
@@ -2356,4 +2378,92 @@ function Proportion(index,type,origin_range,remap_max_range,step) {
         (isNaN(that.bar.position) || !isFinite(that.bar.position)) && (that.bar.position = that.bar.min);
         console.log('變更後的bar position', that.bar.position);
     };
+    //
+    
 };
+//new test proportion object
+function Proportion2(origin_range, remap_max_range) {
+    //原始値
+    this.origin_val = origin_range;
+    //變動値
+    this.float_val;
+    //比例物件
+    this.bar = new function () {
+        this.max = remap_max_range;
+        this.last_width = 0;
+        this.width = remap_max_range;
+    }
+    //存放bar的最大値與最小値與當前位置( 0 ~ (bar.max-bar.width) )
+    this.range = new function () {
+        this.last_max = 0;
+        //最大値
+        this.max = 0;
+        //最小值
+        this.min = 0;
+        //目前位置
+        this.currentPosition = 0;
+    };
+    //變更範圍最大値 //需再補入委派的方法與物件
+    this.change_size = function (new_float_val) {
+        const that = this;
+        
+        //0.設定本次的變動寬度
+        that.float_val = new_float_val;
+        //1.設定bar新的width
+        that._set_bar_width();
+        //2.設定新的範圍最大値
+        that._set_range_max();
+        //3.刷新range current position
+        that._refresh_position();
+        //4.更新比例値
+        that.ratio = that.get_ratio();
+    };
+    //短暫連續的變動
+    this.change_position = function (range) {
+        const that = this;
+        var tmp;
+        tmp = that.range.currentPosition + range;
+        //tmp去做變更
+    }
+    //永久變動
+    this.add_position = function (range) {
+        const that = this;
+        //累計變動
+        that.range.currentPosition += range;
+        //currentPosition去做變更
+    };
+    //依據原始値與變更値取得比例値
+    this.get_ratio = function () {
+        const that = this;
+        var ratio = that.float_val / that.origin_val;
+        console.log('比例:', ratio, ' 浮動範圍:',that.float_val ,' 原始範圍:', that.origin_val);
+        return ratio;
+    };
+    //設定bar新的width
+    this._set_bar_width = function () {
+        const that = this;
+        //設定舊的width
+        that.bar.last_width = that.bar.width;
+        //更新 新的width //x1:y1 = x2:y2 => x2 = (x1*y2)/y1
+        that.bar.width = Math.ceil((that.origin_val * that.bar.max) / that.float_val);
+    };
+    //設定新的範圍最大値
+    this._set_range_max = function () {
+        const that = this;
+        //紀錄上一次的範圍最大値
+        that.range.last_max = that.range.max;
+        //設定新的範圍最大値
+        that.range.max = that.bar.max - that.bar.width;
+    };
+    //刷新range current position
+    this._refresh_position = function () {
+        const that = this;
+        if (that.range.last_max == 0) {
+            console.error("last range max 不得為 0", that.range.last_max);
+            that.range.currentPosition = 0;
+        }
+        else {
+            that.range.currentPosition = that.range.currentPosition * (that.range.max / that.range.last_max);
+        }
+    };
+}
