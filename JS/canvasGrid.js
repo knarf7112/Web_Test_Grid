@@ -1054,6 +1054,8 @@ var Grid = function (obj) {
                     main.refresh_allDisplayElement();
                     main.refresh_columnSortNode();
                 }
+                //歸零
+                sliderMoveRange = 0;
             }
         };//search object when mouse down 
         //畫面滑鼠移動事件
@@ -1095,11 +1097,12 @@ var Grid = function (obj) {
                             sliderMoveRange = endX - startX;
                             //取得slider的合法範圍
                             sliderMoveRange = main.sliderProportion.get_valid_position(sliderMoveRange);
+
                             //slider bar object
                             selectedObject.set_position(sliderMoveRange, 0, false, selectedObject.name);
                             //sliderMoveRange = Math.ceil((-sliderMoveRange + main.sliderProportion.bar.position) * main.sliderProportion.ratio);
                             //變更畫布translate位移量
-                            main.refineNodeTable[0][0].translate.modify(Math.ceil(-sliderMoveRange * main.sliderProportion.ratio), 0);//畫面和bar移動剛好相反
+                            main.refineNodeTable[0][0].translate.modify(Math.ceil(-(sliderMoveRange + main.sliderProportion.range.currentPosition) * main.sliderProportion.ratio), 0);//畫面和bar移動剛好相反
                             //main.ResizeBarNodeList[0].set_position(Math.ceil(-(sliderMoveRange /*+ main.sliderProportion.bar.position*/) * main.sliderProportion.ratio), 0, false, selectedObject.name);
                             console.log('slider range', sliderMoveRange);
                             break;
@@ -2388,6 +2391,8 @@ function Proportion(index,type, origin_range, remap_max_range) {
     this.origin_val = origin_range;
     //變動値
     this.float_val;
+    //上次的變動値
+    this.last_float_val;
     //比例物件
     this.bar = new function () {
         this.max = remap_max_range;
@@ -2407,7 +2412,8 @@ function Proportion(index,type, origin_range, remap_max_range) {
     //變更範圍最大値 //需再補入委派的方法與物件
     this.change_size = function (new_float_val) {
         const that = this;
-
+        //設定上次變動値
+        that.last_float_val = that.float_val;
         //0.設定本次的變動寬度
         that.float_val = new_float_val;
         //1.設定bar新的width
@@ -2424,13 +2430,16 @@ function Proportion(index,type, origin_range, remap_max_range) {
         const that = this;
         var tmp;
         if ((that.range.currentPosition + range) > that.range.max) {
+            //console.log('1');
             return that.range.max - that.range.currentPosition;
         }
         else if ((that.range.currentPosition + range) < that.range.min) {
+            //console.log('2');
             return -that.range.currentPosition;
         }
         else {
-            return that.range.currentPosition + range;
+            //console.log('3');
+            return /*that.range.currentPosition + */range;
         }
     }
     //永久變動range位置
@@ -2445,6 +2454,9 @@ function Proportion(index,type, origin_range, remap_max_range) {
             that.range.currentPosition = 0;
         }
         else {
+            if (undefined === range) {
+                console.error('range is undefined', range);
+            }
             //累計變動
             that.range.currentPosition += range;
         }
@@ -2472,7 +2484,7 @@ function Proportion(index,type, origin_range, remap_max_range) {
         //設定新的範圍最大値
         that.range.max = that.bar.max - that.bar.width;
     };
-    //刷新range current position
+    //刷新range current position(需要投影:projection)
     this._refresh_position = function () {
         const that = this;
         if (that.range.last_max == 0) {
@@ -2480,7 +2492,9 @@ function Proportion(index,type, origin_range, remap_max_range) {
             that.range.currentPosition = 0;
         }
         else {
-            that.range.currentPosition = Math.ceil(that.range.currentPosition * (that.range.max / that.range.last_max));
+            //(投影後)=> x(需要改變的currentPosition) + y(即變更後的新寬度) + z(與前一次的變動値差距/新的ratio) = (bar條的固定最大値)bar max
+            that.range.currentPosition = Math.ceil((that.range.currentPosition/that.range.last_max)*(that.bar.max - that.bar.width - (( that.float_val - that.last_float_val) / that.get_ratio())));
+            //that.range.currentPosition = Math.ceil(that.range.currentPosition * (that.range.max / that.range.last_max));
         }
     };
 };
