@@ -2253,135 +2253,6 @@ Settings_RegularTriangle.prototype = new function () {
     [Number]{origin_range}:原始寬度值
     [Number]{remap_max_range}:映射bar的最大固定寬度值
  */
-function Proportion2(index,type,origin_range,remap_max_range,step) {
-    //object point
-    const that = this;
-    //索引
-    this.index = index;
-    //種類
-    this.type = type;
-    //最初的值
-    this.origin_range = +origin_range;
-    //變動的值
-    this.float_range = 0;
-    //上次變動的值
-    this.last_float_range = 0;
-    //比率:  float_range /origin_range
-    this.ratio = 1;
-    //滑塊物件
-    this.bar = new function () {
-        //映射的最大範圍(定值)
-        this.max = +remap_max_range;
-        //映設的bar最小寬度(依據原始範圍之後的變化跟者變化)
-        this.min = +remap_max_range;
-        //位置(包含Bar範圍寬度)
-        this.position = +remap_max_range;
-    };
-    //
-    this.range = new function () {
-        this.max = 0;
-        this.min = 0;
-        this.position = 0;
-    };
-    //
-    this.get_range_max = function (bar_max, new_bar_min) {
-        const that = this;
-        return bar_max - new_bar_min;
-    }
-    //每步的間距差
-    this.step = step || 1;
-    //最小値
-    this.min = 0;
-    //最大値
-    this.max = 0;
-    //目前位置
-    this.currentPosition = 0;
-    //init flag
-    this.init_flag = false;
-    //依據變動寬度映射bar寬度比例(new_float_range:新的變動寬度)
-    this.change_size = function (new_float_range, deleObj, deleFunc_changeSize,deleFunc_changeX) {
-        const that = this;
-        //將目前變動値變成上次變動値
-        that.last_float_range = that.float_range;
-        //0.設定本次的變動寬度
-        that.float_range = new_float_range;
-        //1.取得bar新的寬度比例
-        var new_min = Math.ceil((that.origin_range * that.bar.max) / that.float_range);//x1:y1 = x2:y2 => x2 = (x1*y2)/y1
-        //2.刷新bar位置和min的値(需要用舊的bar range値與新的bar range值來換算)
-        that._refresh_position(new_min);
-        console.log('變動後的bar min', that.bar.min, 'bar max', that.bar.max);
-        //4.刷新寬度比例
-        that._set_ratio();
-    };
-    //設定bar位置並取得扣除bar寬度後的位置(val是不包含bar min值)
-    this.set_position = function (val) {
-        const that = this;
-        if ((val + that.bar.position)  > that.bar.max) {
-            //max
-            that.bar.position = that.bar.max;
-            console.log('var over max');
-        }
-        else if ((val + that.bar.position) < that.bar.min) {
-            //min
-            that.bar.position = that.bar.min;
-            console.log('var over min', val, that.bar.min);
-        }
-        else {
-            //當前bar位置 = 位移量 + 上次的位移量
-            that.bar.position += val;
-        }
-        return that.bar.position;
-    };
-    //取得比例bar範圍內的值( 0 ~ (bar.max - bar.min) )
-    this.get_range = function (val) {
-        const that = this;
-        var result;
-        if ((that.bar.position + val) > that.bar.max) {
-            //max range
-            result = that.bar.max - that.bar.position;
-        }
-        else if ((that.bar.position + val) < that.bar.min) {
-            //min range
-            result = that.bar.position - that.bar.min;
-        }
-        else {
-            result = val;
-        }
-        console.log('min ', 0, ' max', (that.bar.max - that.bar.min), ' range', result);
-        return result;
-    }
-    //刷新寬度比例(新的寬度/原始的寬度)
-    this._set_ratio = function () {
-        const that = this;
-        that.ratio = that.float_range / that.origin_range;
-        console.log('比例變更為', that.ratio, '浮動範圍',that.float_range ,'原始範圍', that.origin_range);
-    };
-    //刷新bar起始位置與bar min值
-    this._refresh_position = function (new_bar_range) {
-        const that = this;
-        //bar.max is fixed and bar.min is float
-        const N = that.bar.max - that.bar.position;//old position 
-        const M = that.bar.position - that.bar.min;//old position and old bar min
-        //x1:y1 = x2:y2; 紀錄位置(舊):bar的range(舊)和max Range間距差 = 紀錄位置(新):bar的range(新)和max Range間距差
-        console.log('變更前的bar position', that.bar.position, '新的bar min', new_bar_range);
-        //(originPosition-bar.min) : (bar.fixed_Max - originPosition) = (? - newBar.min):( bar.fixed_Max - ?)
-        that.bar.position = ((M * that.bar.max) + (N * new_bar_range)) / (N + M);
-        //setting the bar new min range
-        that.bar.min = new_bar_range;
-        //是否為第一次變更
-        if (!that.init_flag && (that.init_flag = true)) {
-            //將position修改為bar.min值做歸零動作(default: bar.max)
-            that.bar.position = that.bar.min;
-            console.log('position 歸零', that.bar.position);
-        }
-        //if position is NaN or Infinity then position = bar.min(回歸起始點)
-        (isNaN(that.bar.position) || !isFinite(that.bar.position)) && (that.bar.position = that.bar.min);
-        console.log('變更後的bar position', that.bar.position);
-    };
-    //
-    
-};
-//new test proportion object
 function Proportion(index,type, origin_range, remap_max_range) {
     //物件索引
     this.index = index;
@@ -2493,8 +2364,10 @@ function Proportion(index,type, origin_range, remap_max_range) {
         }
         else {
             //(投影後)=> x(需要改變的currentPosition) + y(即變更後的新寬度) + z(與前一次的變動値差距/新的ratio) = (bar條的固定最大値)bar max
-            that.range.currentPosition = Math.ceil((that.range.currentPosition/that.range.last_max)*(that.bar.max - that.bar.width - (( that.float_val - that.last_float_val) / that.get_ratio())));
-            //that.range.currentPosition = Math.ceil(that.range.currentPosition * (that.range.max / that.range.last_max));
+            //想法一: (bar max(固定的bar值) - (新的bar寬度) - (上一次變動值與本次變動值的差距/新的ratio)) * (上一次的位置/上次的範圍最大值)
+            //that.range.currentPosition = Math.ceil((that.range.currentPosition / that.range.last_max) * (that.bar.max - that.bar.width - ((that.float_val - that.last_float_val) / that.get_ratio())));
+            //想法二: 舊的畫面位移量 / 新的總寬度 = 比例bar的新的位置 / 比例bar的固定最大值 => 比例bar的新的位置 = (舊的畫面位移量 / 新的總寬度) * 比例bar的固定最大值
+            that.range.currentPosition = ((that.range.currentPosition * that.ratio) / that.float_val) * that.bar.max;
         }
     };
 };
