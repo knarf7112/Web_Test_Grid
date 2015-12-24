@@ -263,9 +263,9 @@ var Grid = function (obj) {
         //slider shape 位置與大小資訊
         const sliderBarSettings = new function () {
             this.x = 0;
-            this.y = main.height - 15;
+            this.y = main.height - 7;
             this.width = main.width;
-            this.height = 15;
+            this.height = 7;
         };
         const sliderOuterFrameSettings = new function () {
             this.x = 0;
@@ -275,7 +275,7 @@ var Grid = function (obj) {
         };
 
         //1.create slider bar
-        main.slider_X_Bar = new Rectangle(sliderBarTypeName, 0, sliderBarSettings, sliderBarTypeName, 'greenyellow', 0);
+        main.slider_X_Bar = new Rectangle(sliderBarTypeName, 0, sliderBarSettings, sliderBarTypeName, '#3399CC'/*'greenyellow'*/, 0);
         //(覆蓋原來的定位方法:此物件不需要加入translate長度)檢查是否在物件的範圍內
         main.slider_X_Bar.hitCheck = function (x, y) {
             const that = this;
@@ -333,6 +333,7 @@ var Grid = function (obj) {
                                    tmp_pageObject.nodeCSS.width, tmp_pageObject.nodeCSS.height,
                                    tmp_pageObject.nodeCSS.backgroundColor, 1);//set node position and width and height
             tmp_pageNode.set_info(main.pageControl.textValue[index], index, 1);
+            tmp_pageNode.translate = new canvas_translate(0, 0);//or {x:0, y:0}//override translate prototype value //pageControl不能位移,所以不能和grid共用translate,所以要覆蓋
             main.pageControl.incrementPageList.push(tmp_pageObject);
         }
         //console.log('page Control increment', main.pageControl.incrementPageList);
@@ -512,6 +513,8 @@ var Grid = function (obj) {
             tmp_pageNode.set_textContent(tmp_pageObject.pageIndex);
             //設定文字置中
             tmp_pageNode.textAlign = 'center';
+            //or {x:0, y:0}//override translate prototype value //pageControl不能位移,所以不能和grid共用translate,所以要覆蓋
+            tmp_pageNode.translate = new canvas_translate(0, 0);//
             //儲存物件
             main.pageControl.specifiedPageList.push(tmp_pageObject);
         }
@@ -629,7 +632,8 @@ var Grid = function (obj) {
         main.display_data(main.currentPage);
         //刷新排序元件
         main.refresh_columnSortNode();
-
+        //刷新silder bar
+        main.refresh_slider();
     };
     //10.將指定頁物件的node部分(cell_canvas)抽出丟入切頁搜尋列表
     this.add_searchList_specifiedPageControl = function () {
@@ -1039,8 +1043,8 @@ var Grid = function (obj) {
         main.gridElement.onmousedown = function (e) {
             e.stopPropagation();
             if (!flag && (flag = true)) {
-                startX = e.layerX;
-                startY = e.layerY;
+                startX = e.offsetX || e.layerX;
+                startY = e.offsetY || e.layerY;
                 //依據座標檢查搜尋列表並回傳點擊的物件(沒找到則為undefined)
                 selectedObject = main.searchObject(main.gridSearchPriorityList, startX, startY);
                 console.log('mouse down startX', startX, 'startY', startY);
@@ -1062,8 +1066,8 @@ var Grid = function (obj) {
         main.gridElement.onmousemove = function (e) {
             e.stopPropagation();
             if (flag) {
-                endX = e.layerX;
-                endY = e.layerY;
+                endX = e.offsetX || e.layerX;
+                endY = e.offsetY || e.layerY;
                 //
                 if (!!selectedObject) {
                     switch (selectedObject.type) {
@@ -1173,8 +1177,6 @@ var Grid = function (obj) {
                             swapObject = null;
                             break;
                         case 'sliderBar':
-                            //刷新resize物件所有的位置資訊
-                            //main.ResizeBarNodeList[0].set_position(Math.ceil(-(sliderMoveRange /*+ main.sliderProportion.bar.position*/)), 0, true, selectedObject.name);
                             //更新slider bar的永久位置
                             selectedObject.set_position(sliderMoveRange, 0, true, selectedObject.name);
                             //更新slider比例元件下bar的position屬性(sliderMoveRange:移動值)
@@ -1205,7 +1207,7 @@ var Grid = function (obj) {
                 var tmpObject;
                 //console.log('currentTarget', e.currentTarget);
                 //"url('./CSS/ICON/Drag_and_Drop-128.png')";
-                if (!!(tmpObject = main.searchObject(main.gridSearchPriorityList, e.layerX, e.layerY))) {
+                if (!!(tmpObject = main.searchObject(main.gridSearchPriorityList, (e.offsetX || e.layerX), (e.offsetY || e.layerY)))) {
                     switch (tmpObject.type) {
                         case 'ResizeBar':
                             main.gridElement.style.cursor = "col-resize";
@@ -2103,10 +2105,10 @@ Cell_canvas.prototype = new function Cell_prototype() {
     this.hitCheck = function (x, y){
         const that = this;
         //判斷長方形範圍
-        if(x > (that.style.left + that.style.border) && 
-           x < ((that.style.left + that.style.border) + that.style.width) &&
-           y > (that.style.top + that.style.border) &&
-           y < ((that.style.top + that.style.border) + that.style.height)) {
+        if(x > (that.style.left + that.style.border + that.translate.x) && 
+           x < ((that.style.left + that.style.border) + that.style.width + +that.translate.x) &&
+           y > (that.style.top + that.style.border + +that.translate.y) &&
+           y < ((that.style.top + that.style.border) + that.style.height) + +that.translate.y) {
             return true;
         }
         return false;
